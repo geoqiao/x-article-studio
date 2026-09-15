@@ -1,0 +1,9 @@
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+
+# Only Vite's content-hashed files get long-lived browser caching.
+# HTML, fonts, and the companion ZIP retain Cloudflare's revalidation default.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

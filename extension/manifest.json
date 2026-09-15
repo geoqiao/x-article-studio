@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Article Studio X companion",
+  "version": "0.1.0",
+  "description": "Stages local Article Studio bundles for deliberate creation of X Article drafts.",
+  "permissions": ["scripting", "tabs"],
+  "host_permissions": [
+    "http://localhost:4318/*",
+    "http://127.0.0.1:4318/*",
+    "https://x.com/compose/articles*",
+    "https://upload.x.com/i/media/upload.json*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost:4318/*",
+        "http://127.0.0.1:4318/*"
+      ],
+      "js": ["app-content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_title": "Article Studio X companion"
+  }
+}

@@ -1,0 +1,77 @@
+# How the importer works
+
+Date: **2026-09-15** · Status: prototype
+
+## Kaitox’s mechanism
+
+Kaitox parses Markdown into X’s structured article content state. Text becomes blocks with inline formatting ranges. Each media block points to an entity containing an uploaded media ID. Tables and fenced code use `MARKDOWN` entities. Mermaid fences are rendered to PNG before this conversion, so the converter treats diagrams like ordinary images.
+
+Its extension uses an authenticated X browser session and X’s private web endpoints. A local relay connects CLI/editor workflows to that extension. Calling its function named `publishArticle` creates a draft; it does not mean the article has been publicly published.
+
+Article Studio reuses the npm converter, SVG normalization, and `XArticleClient`. A web app supplies the writing interface and talks directly to its own companion through a bounded page-message protocol, so there is no relay process. It does not copy Kaitox’s full extension, branding, or service.
+
+```mermaid
+flowchart LR
+  A[Markdown + attached files] --> B[Parse and check support]
+  B --> C[Native table / rendered table PNG]
+  B --> D[Mermaid SVG → PNG]
+  B --> E[Resolve image bytes]
+  C --> F[Preview + complete asset bundle]
+  D --> F
+  E --> F
+  F --> G[Portable ZIP]
+  F --> H[Extension review]
+  H -->|Create X draft| I[Upload every image in X tab]
+  I --> J[Map media IDs into content state]
+  J --> K[Create draft]
+  K --> L[Review and publish manually in X]
+```
+
+## Boundaries in this implementation
+
+| Layer | Responsibility | Main files |
+| --- | --- | --- |
+| Planner | Retain reference definitions, identify unsupported constructs, replace generated assets, verify placement against Kaitox output | `src/plan.ts` |
+| Image resolution | Match attached files, reject ambiguous paths, CORS downloads without credentials, MIME/size checks | `src/files.ts` |
+| Rendering | Mermaid strict mode, normalized SVG rasterization, table canvas rendering | `src/render.ts` |
+| Preparation | All assets ready before handoff; dimensions, SHA-256, sanitized preview, portable ZIP | `src/prepare.ts`, `src/portable.ts` |
+| Editor | Source/asset/preview views, import, format guide, browser persistence | `src/App.tsx`, `src/ArticlePreview.tsx`, `src/storage.ts` |
+| Web bridge | Request IDs, status/stage messages, bundle validation | `src/bridge.ts` |
+| Extension | Origin checks, IndexedDB jobs, own review page, draft creation state | `extension/src/` |
+| X runner | Same-origin session use, media upload, content-state creation, private draft mutation | `extension/src/x-runner.ts` |
+
+Generated images use opaque source keys such as `studio-asset://mermaid-1.png`. These keys are never fetched as URLs. They map to actual bundled bytes. Portable ZIP export rewrites only image destinations to `assets/...`; identical text in prose or code is not rewritten.
+
+The preview runs Kaitox’s converter and sanitizes the resulting HTML. It uses temporary object URLs for prepared images. Preview typography is a local approximation; it is not an embedded X editor.
+
+Media figures are associated with their source assets in renderer order, including repeated occurrences. `ArticlePreview` adds React image controls alongside sanitized blocks; those controls are never included in clipboard HTML or exported Markdown. Per-image replacement undo restores the previous explicit mapping, or removes the override to restore original resolution. Undo lasts for one replacement per source in the current session; selected files still persist in IndexedDB.
+
+Local Markdown contains paths, not image bytes. File selection exposes only filenames, while directory selection exposes paths relative to the chosen root. The resolver prefers exact paths, then the longest matching trailing path, and accepts a unique filename when no directory match exists. Equal matches and filename-only matches to distinct article paths remain ambiguous. Explicit per-image choices take precedence. Folder matching filters to referenced files, ignores other Markdown/images in the selected directory, and rebinds matched sources to repair previous incorrect choices.
+
+Every explicit Markdown import starts with only the attachments supplied in that import, even when its filename and text are unchanged. It clears overrides, undo, progress, and the previous prepared bundle/object URLs. Imports use a sequence guard so a delayed earlier file read cannot overwrite a newer import or a New/Example action. Page reload still resumes the saved current draft, including its selected images.
+
+The editor automatically prepares assets after a short pause in typing. Each request is cancelled when its input changes; stale results are disposed and cannot enable export or draft creation. An existing preview image can remain visible only when the attached files, document path, image source, and generated-image inputs still match. Drawer thumbnails also match by source rather than ordinal asset ID. Updating status accounts for changed inputs immediately, before the preparation effect starts. The UI never writes to X during this process.
+
+The manual clipboard route is separate from draft creation. It copies semantic HTML/plaintext with the title removed and explicit image placement markers. Individual images can be copied as PNG. This route makes no promise that X will preserve native tables or upload images from HTML paste. The companion route still provides upload-and-placement automation.
+
+## Session and network behavior
+
+A standalone website cannot read another origin’s login cookies. The companion injects its bundled runner into an existing X Articles tab. `ct0` is read there, and X requests use the page’s own `fetch` with credentials included. Cookie values are not returned to Article Studio or saved in extension storage. Kaitox supplies the public web-client bearer fallback; it is not a user API secret.
+
+The page protocol accepts status and staging only. Draft creation uses messages from the extension’s own review page. Page requests must come from the top frame and an exact configured app origin. Extension host permissions cover the app and X; they do not grant access to arbitrary image sites. Remote images are retrieved by the web app or supplied locally before staging.
+
+Private GraphQL operation IDs are taken from observed X resource URLs where available, with Kaitox’s pinned constants as fallback. X can rotate IDs or change request requirements. This is an explicit maintenance risk and a reason a successful build does not certify live integration.
+
+## Completeness and recovery
+
+Kaitox’s higher-level orchestration catches individual image failures and can continue with skipped images. This bridge calls its lower-level client directly: every referenced image must upload before the draft mutation runs.
+
+Jobs are stored in extension IndexedDB. A transaction claims a pending job so duplicate clicks cannot start two attempts. Completed jobs retain their result. Upload/preflight failures allow an explicit retry; uncertainty after draft creation begins requires checking X before retrying. Interrupted jobs also become uncertain. There is no automatic create retry and no publish mutation.
+
+A failure after several uploads can leave unattached media on X; this prototype does not delete or resume those uploads. Preparing the document again produces a new job ID, so idempotency applies to a staged job, not all historically identical articles. Browser or X failures cannot be made into a cross-system atomic transaction.
+
+## Future official API adapter
+
+An OAuth-backed adapter could upload media and use [`POST /2/articles/draft`](https://docs.x.com/x-api/articles/create-draft-article.md), avoiding the browser companion. It would require developer access, user OAuth, current account/endpoint entitlement, pricing verification, and explicit conversion to the public schema. The current private payload must not be sent unchanged to that endpoint.
+
+Further work should follow a real-account trial: verify native tables and ordering first, then add ALT, covers, formula entities, and support for complex nesting according to observed need. Monetization and willingness to pay have not been validated.

@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "md2xarticle",
+  "account_id": "4c7b6a86dbcbd91469298d396009cccf",
+  "compatibility_date": "2026-09-15",
+  "workers_dev": false,
+  "preview_urls": false,
+  "build": {
+    "command": "pnpm build:production"
+  },
+  "assets": {
+    "directory": "./dist"
+  },
+  "routes": [
+    { "pattern": "md2xarticle.com", "custom_domain": true }
+  ]
+}
