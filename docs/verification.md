@@ -16,8 +16,21 @@ Date: **2026-09-15** · Article Studio 0.1.0
 | `pnpm build:html` | Built a single HTML file with embedded scripts, CSS, fonts, renderer, and notices |
 | Original standalone HTML opened from disk with Chrome offline | Passed before the UX revision; current browser tool blocks file-protocol navigation, so the revised artifact is exercised via localhost |
 | Revised standalone HTML with networking disabled after loading | Example image, table, and Mermaid render automatically without asset requests |
+| Cloudflare Workers Builds from private GitHub repository | Initial deployment succeeded; all 46 tests passed in Cloudflare's Linux build environment |
+| Live HTTPS site | Browser loaded `https://md2xarticle.com` with a valid certificate; HTTP redirects to HTTPS with a 301, preserving query strings |
+| Live editor workflows | All 14 browser smoke cases and all 7 re-import regression cases passed on the production domain in isolated Chrome |
+| Live companion download | ZIP served successfully and its manifest includes the exact `https://md2xarticle.com/*` origin alongside localhost |
+| Production caching | HTML revalidates on each request; content-hashed JS uses a one-year immutable cache policy |
 
 The unit suite exercises source order, image placements, reference definitions, table representations, lossy nesting checks, portable asset rewrites, path ambiguity/traversal, URL policy, MIME recognition, bundle limits/hashes, job state transitions, and extension build artifacts. Runner tests mock the X client: all images must upload before creation, and an upload failure prevents the draft mutation.
+
+## Production deployment
+
+The private repository is `geoqiao/x-article-studio`; its `main` branch is connected directly to Cloudflare Workers Builds. The first hosted build (`b519bbfb-6380-4996-9a88-154214ececc8`) cloned the repository, ran its test/build commands, and deployed Worker version `4d6c8635-17af-476f-a405-a827789f6a0a` on 2026-09-15. The initial source commit is `f592dc0`. Build credentials are managed by Cloudflare, outside this repository.
+
+Live browser checks used the normal HTTPS URL. The machine's shell resolver temporarily retained the earlier nonexistent-domain response; HTTP header checks used the domain's resolved Cloudflare IP with `curl --resolve`, preserving the hostname and normal TLS verification. No host-file or system DNS changes were made.
+
+The served companion is an unpacked-development download. Chrome Web Store publication and real X draft creation were not part of this deployment verification.
 
 ## Browser results
 

@@ -2,6 +2,8 @@
 
 Status: **prototype** · Started: **2026-09-15**
 
+Live app: <https://md2xarticle.com> · Private repository: <https://github.com/geoqiao/x-article-studio>
+
 A Markdown-to-X-Articles web app inspired by MD2X’s editing workflow and built on Kaitox’s MIT-licensed article converter. It prepares ordinary images, renders Mermaid to PNG, preserves native tables (or renders them to PNG), and passes a complete document to a small Chromium companion.
 
 **The local editor and exports work. The companion is implemented, but creating and rendering a draft in a real X account has not been verified.** X’s private editor interfaces and account access remain the live integration boundary.
@@ -89,19 +91,22 @@ pnpm build
 
 `dist/` is the static web app. `dist-extension/` is the unpacked companion. `public/article-studio-bridge.zip` is generated before Vite copies public assets into the web build.
 
-The production target is <https://md2xarticle.com>, served by Cloudflare Workers Static Assets. The private source repository is <https://github.com/geoqiao/x-article-studio>. Cloudflare Workers Builds uses the `main` branch with these settings:
+The production app at <https://md2xarticle.com> is served by Cloudflare Workers Static Assets. Cloudflare Workers Builds deploys pushes to the private repository's `main` branch with these settings:
 
 | Setting | Value |
 | --- | --- |
 | Worker name | `md2xarticle` |
 | Repository root | `/` |
 | Production branch | `main` |
+| Non-production branch builds | Disabled |
 | Build command | `pnpm test && pnpm build:production` |
 | Deploy command | `pnpm run deploy` |
 | Build variable | `PNPM_VERSION=11.5.0` |
 | Node version | `.node-version` |
 
 The build runs tests and TypeScript checks, creates the companion for the exact production origin, and bundles the static web app. Cloudflare's Git integration supplies deployment credentials; no credentials belong in this repository. The domain and asset directory are declared in `wrangler.jsonc`. HTML and the companion ZIP are revalidated on each request; only content-hashed assets get long-lived browser caching.
+
+Cloudflare manages the custom domain's DNS and TLS certificate. The zone's **Always Use HTTPS** setting is enabled, redirecting HTTP requests while preserving paths and query strings. This zone setting is managed separately from Wrangler. Monitor deployments and build logs in the [Cloudflare project dashboard](https://dash.cloudflare.com/4c7b6a86dbcbd91469298d396009cccf/workers/services/view/md2xarticle/production).
 
 For local production verification or an authenticated manual deployment:
 
