@@ -2,13 +2,17 @@
   "manifest_version": 3,
   "name": "Article Studio X companion",
   "version": "0.1.0",
-  "description": "Stages local Article Studio bundles for deliberate creation of X Article drafts.",
-  "permissions": ["scripting", "tabs"],
+  "description": "Turn Markdown, images, tables, and Mermaid diagrams from Article Studio into X Article drafts, with a review before uploading.",
+  "homepage_url": "https://md2xarticle.com/",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": ["scripting"],
   "host_permissions": [
-    "http://localhost:4318/*",
-    "http://127.0.0.1:4318/*",
-    "https://x.com/compose/articles*",
-    "https://upload.x.com/i/media/upload.json*"
+    "https://x.com/compose/articles*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -24,6 +28,12 @@
     }
   ],
   "action": {
-    "default_title": "Article Studio X companion"
+    "default_title": "Open Article Studio",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
   }
 }

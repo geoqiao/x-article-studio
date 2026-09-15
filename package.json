@@ -8,6 +8,7 @@
     "check": "tsc --noEmit && tsc --noEmit -p extension/tsconfig.json",
     "test": "vitest run",
     "build:extension": "node scripts/build-extension.mjs",
+    "build:store": "ARTICLE_STUDIO_ORIGIN=https://md2xarticle.com node scripts/build-extension.mjs --store",
     "build:html": "node scripts/build-html-preview.mjs",
     "build": "pnpm check && pnpm build:extension && vite build",
     "build:production": "ARTICLE_STUDIO_ORIGIN=https://md2xarticle.com pnpm build",

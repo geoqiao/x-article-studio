@@ -29,12 +29,22 @@ main {
 }
 
 .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0 0 12px;
   color: #55708c;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
+}
+
+.eyebrow::before {
+  content: "";
+  flex: 0 0 28px;
+  height: 28px;
+  background: url("icons/icon-48.png") center / contain no-repeat;
 }
 
 h1 {

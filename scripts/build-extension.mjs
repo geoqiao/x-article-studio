@@ -5,7 +5,8 @@ import { join, relative, resolve } from 'node:path';
 
 const projectRoot = resolve(new URL('..', import.meta.url).pathname);
 const extensionRoot = join(projectRoot, 'extension');
-const outputRoot = join(projectRoot, 'dist-extension');
+const storeBuild = process.argv.includes('--store');
+const outputRoot = join(projectRoot, storeBuild ? 'dist-extension-store' : 'dist-extension');
 const publicRoot = join(projectRoot, 'public');
 
 const DEFAULT_ORIGINS = ['http://localhost:4318', 'http://127.0.0.1:4318'];
@@ -33,7 +34,10 @@ function exactOrigin(value) {
 }
 
 const configuredOrigin = process.env.ARTICLE_STUDIO_ORIGIN?.trim();
-const appOrigins = [...new Set([...DEFAULT_ORIGINS, ...(configuredOrigin ? [exactOrigin(configuredOrigin)] : [])])];
+if (storeBuild && (!configuredOrigin || !exactOrigin(configuredOrigin).startsWith('https://'))) {
+  throw new Error('A store build requires an exact HTTPS ARTICLE_STUDIO_ORIGIN.');
+}
+const appOrigins = [...new Set([...(storeBuild ? [] : DEFAULT_ORIGINS), ...(configuredOrigin ? [exactOrigin(configuredOrigin)] : [])])];
 const appMatches = appOrigins.map((origin) => `${origin}/*`);
 
 const packageJson = JSON.parse(await readFile(join(projectRoot, 'package.json'), 'utf8'));
@@ -97,6 +101,7 @@ await writeFile(join(outputRoot, 'manifest.json'), `${JSON.stringify(manifest, n
 await cp(join(extensionRoot, 'review.html'), join(outputRoot, 'review.html'));
 await cp(join(extensionRoot, 'review.css'), join(outputRoot, 'review.css'));
 await cp(join(extensionRoot, 'README.md'), join(outputRoot, 'README.md'));
+await cp(join(extensionRoot, 'icons'), join(outputRoot, 'icons'), { recursive: true });
 await mkdir(publicRoot, { recursive: true });
 await cp(join(publicRoot, 'THIRD_PARTY_NOTICES.txt'), join(outputRoot, 'THIRD_PARTY_NOTICES.txt'));
 
@@ -116,8 +121,11 @@ const archive = await zip.generateAsync({
   compression: 'DEFLATE',
   compressionOptions: { level: 9 },
 });
-const archivePath = join(publicRoot, 'article-studio-bridge.zip');
+const archivePath = storeBuild
+  ? join(projectRoot, 'extension/store', `article-studio-${extensionVersion}.zip`)
+  : join(publicRoot, 'article-studio-bridge.zip');
+if (storeBuild) await mkdir(join(projectRoot, 'extension/store'), { recursive: true });
 await writeFile(archivePath, archive);
 
 console.log(`✓ Article Studio extension built → ${relative(projectRoot, outputRoot)}/`);
-console.log(`✓ browser download archive → ${relative(projectRoot, archivePath)}`);
+console.log(`✓ ${storeBuild ? 'Chrome Web Store' : 'browser download'} archive → ${relative(projectRoot, archivePath)}`);

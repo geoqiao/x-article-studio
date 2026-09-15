@@ -1,6 +1,8 @@
 node_modules/
 dist/
 dist-extension/
+dist-extension-store/
+extension/store/*.zip
 public/article-studio-bridge.zip
 article-studio-preview.html
 .env

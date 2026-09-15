@@ -335,6 +335,11 @@ async function handleReviewRequest(request: Exclude<ExtensionRequest, PageReques
   return { ok: true };
 }
 
+chrome.action.onClicked.addListener(() => {
+  const origin = appOrigins.find((candidate) => candidate.startsWith('https://')) ?? appOrigins[0];
+  void chrome.tabs.create({ url: `${origin}/` });
+});
+
 chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
   if (isPageRequestEnvelope(message)) {
     if (!isAppSender(sender)) return false;

@@ -1004,6 +1004,11 @@ export default function App() {
             ? "Works offline · X connection needs the full app"
             : "Saved on this device · X draft reviewed before creation"}
         </span>
+        {!STANDALONE && (
+          <a href="/privacy.html" target="_blank" rel="noopener noreferrer">
+            Privacy
+          </a>
+        )}
         <button onClick={exportZip} disabled={!ready || exporting}>
           <ArrowDownToLine size={13} />
           {exporting ? "Exporting…" : "Export ZIP"}
