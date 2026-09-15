@@ -121,6 +121,14 @@ Use `pnpm run deploy` explicitly: `pnpm deploy` is pnpm's separate workspace-pac
 
 The public app serves code and fonts; Markdown parsing, image preparation, and saved drafts stay in the browser. Opening a remote image URL still makes a request to its host. Only the companion's confirmed review action sends prepared article content to X.
 
+## Google Search Console
+
+The [md2xarticle.com Domain property](https://search.google.com/search-console?resource_id=sc-domain%3Amd2xarticle.com) was verified on September 16, 2026 under the owner's Google account. Cloudflare Domain Connect added the Google verification TXT record through a one-time authorization. Keep that DNS record to retain verification; it is managed outside this repository.
+
+[robots.txt](public/robots.txt) allows crawling and advertises [sitemap.xml](public/sitemap.xml). The sitemap lists the homepage, `/support`, and `/privacy`; these are the public pages' final URLs after Cloudflare's HTML redirects. The deployment for `849486e` passed its build. The live sitemap returned HTTP 200 with `application/xml` and passed XML validation.
+
+Google accepted the sitemap submission and the homepage indexing request. The homepage was added to Google's priority crawl queue; inclusion in search results is not yet confirmed. The sitemap report initially showed “Couldn't fetch.” Google's subsequent live URL test reported “URL is available to Google,” and its tested source contained the correct three-URL XML. The sitemap was resubmitted once after that successful live fetch; its report still showed the earlier fetch status at handoff. Check the [Sitemaps report](https://search.google.com/search-console/sitemaps?resource_id=sc-domain%3Amd2xarticle.com) after Google reprocesses it.
+
 ## Implementation and evidence
 
 The monochrome X-and-article-lines logo is available as [SVG](public/logo.svg) and [512-pixel PNG](public/logo.png). The header and favicon share the SVG; the standalone preview embeds it.
