@@ -19,7 +19,7 @@ const result = await build({
     "process.env.NODE_ENV": '"production"',
     "import.meta.env.VITE_STANDALONE_PREVIEW": '"true"',
   },
-  loader: { ".ttf": "dataurl", ".woff": "dataurl", ".woff2": "dataurl" },
+  loader: { ".ttf": "dataurl", ".woff": "dataurl", ".woff2": "dataurl", ".svg": "dataurl" },
   plugins: [
     {
       name: "inline-public-fonts",
@@ -48,7 +48,7 @@ const notices = await readFile(
   "utf8",
 );
 const favicon = Buffer.from(
-  await readFile(resolve(root, "public/favicon.svg")),
+  await readFile(resolve(root, "public/logo.svg")),
 ).toString("base64");
 const html = `<!doctype html>
 <html lang="en" data-preview="standalone">

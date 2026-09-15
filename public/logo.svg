@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <title>Article Studio</title>
+  <rect width="64" height="64" rx="12" fill="#0f1419"/>
+  <path d="M42 12h5L21 44h-5L42 12Z" fill="#fff"/>
+  <path d="M16 12h10l23 32H39L16 12Zm5 3 20 26h3L24 15h-3Z" fill="#fff" fill-rule="evenodd"/>
+  <path d="M18 49h29v2H18zm0 5h19v2H18z" fill="#fff"/>
+</svg>

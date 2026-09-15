@@ -52,7 +52,9 @@ Every explicit Markdown import starts with only the attachments supplied in that
 
 The editor automatically prepares assets after a short pause in typing. Each request is cancelled when its input changes; stale results are disposed and cannot enable export or draft creation. An existing preview image can remain visible only when the attached files, document path, image source, and generated-image inputs still match. Drawer thumbnails also match by source rather than ordinal asset ID. Updating status accounts for changed inputs immediately, before the preparation effect starts. The UI never writes to X during this process.
 
-The manual clipboard route is separate from draft creation. It copies semantic HTML/plaintext with the title removed and explicit image placement markers. Individual images can be copied as PNG. This route makes no promise that X will preserve native tables or upload images from HTML paste. The companion route still provides upload-and-placement automation.
+The manual clipboard route is separate from draft creation. A dedicated serializer removes the article title and preview wrappers/attributes, maps preview h2/h3 to clipboard h1/h2 (X's header-one/header-two blocks), and replaces image figures with placement markers. It supplies both semantic HTML and readable plaintext; list markers, link destinations, table cells, and literal code remain readable in plain-text receivers. It never substitutes the source Markdown for the body.
+
+Async Clipboard is tried first. If it is blocked or unavailable, a selected rich fragment and a copy-event handler write the same HTML/plaintext pair while restoring the previous focus/selection. If both automatic paths fail, a selectable rich body replaces the former plain-text textarea. Its native keyboard-copy event supplies the same body payload. Title copying remains separate. Individual images can be copied as PNG. This route makes no promise that X will preserve native tables or upload images from HTML paste. The companion route still provides upload-and-placement automation.
 
 ## Session and network behavior
 

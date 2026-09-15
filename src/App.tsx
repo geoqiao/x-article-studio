@@ -39,7 +39,15 @@ import { getBridgeStatus, sendDraft } from "./bridge";
 import { loadDraft, saveDraft } from "./storage";
 import { SAMPLE, createSampleImage } from "./sample";
 import { FORMATS } from "./compatibility";
-import { copyArticleBody, copyImage } from "./clipboard";
+import {
+  copyArticleBody,
+  copyImage,
+  createArticleClipboard,
+  selectFormattedBody,
+  setArticleClipboard,
+  type ArticleClipboard,
+} from "./clipboard";
+import logoUrl from "../public/logo.svg";
 import { ArticlePreview } from "./ArticlePreview";
 import type {
   AssetProgress,
@@ -88,7 +96,12 @@ export default function App() {
   const [bridge, setBridge] = useState(false);
   const [sending, setSending] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [manualCopy, setManualCopy] = useState("");
+  const [manualCopy, setManualCopy] = useState<
+    | { kind: "title"; text: string }
+    | ({ kind: "body" } & ArticleClipboard)
+    | null
+  >(null);
+  const manualBody = useRef<HTMLDivElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const markdownInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
@@ -380,7 +393,7 @@ export default function App() {
         setFiles(merged);
         setImageUndo(new Map());
         setCopied("");
-        setManualCopy("");
+        setManualCopy(null);
         setMarkdown(text);
         setTitle("");
         setDocumentPath(path);
@@ -505,25 +518,25 @@ export default function App() {
       setCopied("title");
       setNotice("Title copied. Paste it into the title field in X.");
     } catch {
-      setManualCopy(plan.title);
+      setManualCopy({ kind: "title", text: plan.title });
       setModal("copy");
     }
   }
   async function copyBody() {
     if (!ready || !article) return;
+    setCopied("");
+    setNotice("");
+    const body = createArticleClipboard(article);
     try {
-      await copyArticleBody(article);
+      await copyArticleBody(body);
       setCopied("body");
       setNotice(
         article.assets.length
-          ? "Body copied. Images need separate insertion when pasting; use Create X draft to include them automatically."
-          : "Body copied. Paste it into the X Articles editor.",
+          ? "Formatted body copied. Paste into X Articles, then add the images from the Images panel."
+          : "Formatted body copied. Paste it into the X Articles body field.",
       );
     } catch {
-      const holder = document.createElement("div");
-      holder.innerHTML = preview;
-      holder.querySelector("h1")?.remove();
-      setManualCopy(holder.innerText);
+      setManualCopy({ kind: "body", ...body });
       setModal("copy");
     }
   }
@@ -594,9 +607,7 @@ export default function App() {
     <div className="app-shell">
       <header className="app-header">
         <a className="brand" href="#" aria-label="Article Studio">
-          <span className="brand-icon">
-            <FileText size={18} />
-          </span>
+          <img className="brand-icon" src={logoUrl} alt="" width="32" height="32" />
           Article Studio
         </a>
         <span className="app-description">{modeLabel}</span>
@@ -640,6 +651,7 @@ export default function App() {
             onClick={copyBody}
             disabled={!ready}
             className="button-primary"
+            title="Copy formatted rich text for the X Articles body field"
           >
             <Copy size={14} />
             {copied === "body" ? "Copied!" : "Copy body"}
@@ -1380,7 +1392,9 @@ export default function App() {
                   <p>
                     <b>Create X draft</b> uploads and places images through the
                     Chrome companion. <b>Copy title / Copy body</b> is the
-                    manual option: paste into X, then copy images from the
+                    manual option: the body is copied as formatted rich text.
+                    Use regular Paste in the X Articles body field to keep
+                    headings, emphasis, lists, and links. Add images from the
                     Images panel. Tables may need PNG when pasting.
                   </p>
                 </li>
@@ -1477,20 +1491,45 @@ export default function App() {
               </div>
             </>
           )}
-          {modal === "copy" && (
+          {modal === "copy" && manualCopy && (
             <>
-              <h2>Copy manually</h2>
+              <h2>{manualCopy.kind === "body" ? "Copy formatted body" : "Copy title"}</h2>
               <p className="dialog-lead">
-                This browser blocked clipboard access. Select the text below and
-                copy it, or download your article.
+                {manualCopy.kind === "body"
+                  ? "Automatic copying was blocked. Select the formatted body below and press ⌘C on Mac or Ctrl+C on Windows. Then paste normally into the X Articles body field."
+                  : "Automatic copying was blocked. Select the title below and copy it into the X Articles title field."}
               </p>
-              <textarea
-                className="manual-copy"
-                aria-label="Text to copy"
-                value={manualCopy}
-                readOnly
-                onFocus={(event) => event.target.select()}
-              />
+              {manualCopy.kind === "body" ? (
+                <>
+                  <button
+                    className="button-primary"
+                    onClick={() => manualBody.current && selectFormattedBody(manualBody.current)}
+                  >
+                    <Copy size={15} /> Select formatted body
+                  </button>
+                  <div
+                    ref={manualBody}
+                    className="manual-copy-rich rendered-article"
+                    role="textbox"
+                    aria-label="Formatted body to copy"
+                    aria-readonly="true"
+                    tabIndex={0}
+                    onCopy={(event) => {
+                      setArticleClipboard(event.clipboardData, manualCopy);
+                      event.preventDefault();
+                    }}
+                    dangerouslySetInnerHTML={{ __html: manualCopy.html }}
+                  />
+                </>
+              ) : (
+                <textarea
+                  className="manual-copy"
+                  aria-label="Text to copy"
+                  value={manualCopy.text}
+                  readOnly
+                  onFocus={(event) => event.target.select()}
+                />
+              )}
             </>
           )}
         </div>

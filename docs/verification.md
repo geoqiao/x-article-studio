@@ -21,6 +21,8 @@ Date: **2026-09-15** · Article Studio 0.1.0
 | Live editor workflows | All 14 browser smoke cases and all 7 re-import regression cases passed on the production domain in isolated Chrome |
 | Live companion download | ZIP served successfully and its manifest includes the exact `https://md2xarticle.com/*` origin alongside localhost |
 | Production caching | HTML revalidates on each request; content-hashed JS uses a one-year immutable cache policy |
+| Clipboard formatting regression | Seven cases passed on the rebuilt app and standalone HTML: body structure, readable plaintext, actual rich paste, denied permission, missing API, manual keyboard copy, and separate title fallback |
+| Logo | Header/favicon SVG and 512×512 RGBA PNG inspected; PNG corners have zero alpha; standalone embeds the SVG |
 
 The unit suite exercises source order, image placements, reference definitions, table representations, lossy nesting checks, portable asset rewrites, path ambiguity/traversal, URL policy, MIME recognition, bundle limits/hashes, job state transitions, and extension build artifacts. Runner tests mock the X client: all images must upload before creation, and an upload failure prevents the draft mutation.
 
@@ -39,7 +41,9 @@ The revised sample contains one ordinary image, one table, and one Mermaid diagr
 Additional browser cases passed:
 
 - Opening and editing automatically renders assets; the manual Prepare button is absent.
-- Copy body writes actual HTML/plaintext to Chrome’s clipboard, preserving emphasis and explicit image markers without expired blob URLs. Copy title writes the title separately.
+- Copy body writes actual HTML/plaintext to Chrome’s clipboard, preserving emphasis and explicit image markers without expired blob URLs. Its heading tags match X's two body heading levels, and preview wrappers/classes are removed. Copy title writes the title separately.
+- A real Chrome paste into an independent contenteditable receiver preserves headings, bold styling, link destinations, and list items. This checks browser transfer, not a write to a real X draft.
+- Denying Async Clipboard or removing ClipboardItem still copies both rich HTML and readable text through selection copying. When both automatic methods fail, the manual dialog shows formatted content; a real keyboard Copy writes the identical body payload. No false success state remains after the failed automatic copy.
 - Copy image writes a PNG to the clipboard. Pasting it into the editor inserts a Markdown reference and renders the image.
 - Adding an image through the picker inserts it into the document, not just the attachment store.
 - Individual images match longer Markdown paths; matching an already referenced image does not append another reference.
@@ -65,7 +69,7 @@ Additional browser cases passed:
 
 The extension test used a separate browser profile with no X login. X requests were blocked as an additional guard, and **zero X requests were observed**.
 
-Scripts: [`browser-smoke.js`](../tests/browser-smoke.js), [`browser-reimport-smoke.js`](../tests/browser-reimport-smoke.js), and [`browser-bridge-smoke.js`](../tests/browser-bridge-smoke.js). They run through `playwright-cli`; the bridge script requires the built extension loaded in an isolated Chromium profile. Do not run the bridge script in a browser containing a real signed-in X tab.
+Scripts: [`browser-smoke.js`](../tests/browser-smoke.js), [`browser-clipboard-smoke.js`](../tests/browser-clipboard-smoke.js), [`browser-reimport-smoke.js`](../tests/browser-reimport-smoke.js), and [`browser-bridge-smoke.js`](../tests/browser-bridge-smoke.js). They run through `playwright-cli`; the bridge script requires the built extension loaded in an isolated Chromium profile. Do not run the bridge script in a browser containing a real signed-in X tab.
 
 ## Screenshots
 

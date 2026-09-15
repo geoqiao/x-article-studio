@@ -33,7 +33,8 @@ async page => {
     return { html: await html.text(), plain: await plain.text() };
   });
   assert(copiedBody.html.includes('<strong>'), 'Rich clipboard lost bold');
-  assert(!copiedBody.html.includes('<h1') && !copiedBody.html.includes('blob:'), 'Clipboard contains title or invalid local image URLs');
+  assert(!copiedBody.html.includes('A calmer way to publish') && !copiedBody.html.includes('blob:'), 'Clipboard contains title or invalid local image URLs');
+  assert(copiedBody.html.includes('<h1>Keep your writing workflow</h1>'), 'Clipboard heading does not map to X Heading');
   assert(!/Replace image|Undo change|Fix image/.test(copiedBody.html), 'Preview editing controls leaked into clipboard');
   assert(copiedBody.plain.includes('[Image:') && copiedBody.html.includes('<table'), 'Clipboard missing placement markers or table');
   await page.getByRole('button', { name: 'Copy title', exact: true }).click();

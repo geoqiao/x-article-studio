@@ -103,11 +103,10 @@ svg {
   text-decoration: none;
 }
 .brand-icon {
-  width: 26px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  color: var(--blue);
+  width: 32px;
+  height: 32px;
+  display: block;
+  flex: 0 0 auto;
 }
 .app-description {
   color: var(--muted);
@@ -1005,6 +1004,29 @@ dialog::backdrop {
   font-size: 12px;
   line-height: 1.7;
   padding: 14px;
+}
+.manual-copy-rich {
+  max-height: 48vh;
+  overflow: auto;
+  margin-top: 16px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  cursor: text;
+  user-select: text;
+}
+.manual-copy-rich h1 {
+  font-size: 22px;
+  margin: 24px 0 12px;
+  letter-spacing: -0.45px;
+}
+.manual-copy-rich h2 {
+  font-size: 18px;
+  margin: 20px 0 10px;
+}
+.manual-copy-rich :first-child {
+  margin-top: 0;
 }
 .spin {
   animation: spin 1s linear infinite;

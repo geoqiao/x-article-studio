@@ -25,7 +25,7 @@ Open <http://127.0.0.1:4318>. No backend, API key, paid image generator, or rela
 1. Paste Markdown into the left editor, use **Import Markdown**, or drop a `.md`/`.markdown` file into the editor. The first H1 becomes the title.
 2. The preview updates automatically, including Mermaid and attached images. Add pictures through **Images**, or paste/drop them into the editor. For local Markdown (including Obsidian), use **Match image folder** once: choose the image folder or its parent. Only referenced images are attached; the Markdown stays unchanged. Individual files also match longer relative paths when their filenames are unambiguous.
 3. Use the **Tables** selector above the preview to keep native tables or render PNGs. The **Table** and **Diagram** toolbar buttons insert examples at the cursor.
-4. **Copy title** and **Copy body** support manual pasting into X. The body clipboard contains HTML and plain text, with explicit image placement markers. Copy individual PNGs from **Images**; clipboard pasting does not automatically upload images or guarantee native table preservation.
+4. **Copy title** copies the separate title. **Copy body** copies formatted rich text with X's two heading levels, emphasis, links, lists, and quotes. Use regular Paste in the X Articles body field. Plain-text applications receive readable prose, with list markers and link destinations. If clipboard permissions are blocked, selection copying is tried automatically; the final fallback lets you select and copy the formatted body. Copy individual PNGs from **Images** at the image markers; clipboard pasting does not automatically upload images or guarantee native table preservation.
 5. **Create X draft** uses the companion to upload and place all images automatically. It first opens the companion’s review; confirmation there starts the X write. Publishing remains separate.
 
 Missing files and unsupported constructs show an action beside the preview. There is no manual preparation step. **Export ZIP** remains available for portable Markdown and images, and **Save Markdown** downloads the original source. **How to use** contains a short guide, an optional title override, and the test/limitation notes.
@@ -122,6 +122,8 @@ Use `pnpm run deploy` explicitly: `pnpm deploy` is pnpm's separate workspace-pac
 The public app serves code and fonts; Markdown parsing, image preparation, and saved drafts stay in the browser. Opening a remote image URL still makes a request to its host. Only the companion's confirmed review action sends prepared article content to X.
 
 ## Implementation and evidence
+
+The monochrome X-and-article-lines logo is available as [SVG](public/logo.svg) and [512-pixel PNG](public/logo.png). The header and favicon share the SVG; the standalone preview embeds it.
 
 - [How Kaitox works and what this app changes](docs/architecture.md)
 - [Syntax support, restrictions, and primary sources](docs/compatibility.md)
