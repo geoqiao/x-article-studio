@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "md2xarticle-www",
+  "account_id": "4c7b6a86dbcbd91469298d396009cccf",
+  "main": "worker/www-redirect.ts",
+  "compatibility_date": "2026-09-15",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    { "pattern": "www.md2xarticle.com", "custom_domain": true }
+  ]
+}

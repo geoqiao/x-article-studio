@@ -674,19 +674,21 @@ export default function App() {
         </div>
       </div>
 
-      <div className="workflow-strip">
-        <span>
-          <b>1</b> Paste or import Markdown
-        </span>
-        <ArrowRight size={12} />
-        <span>
-          <b>2</b> Preview updates automatically
-        </span>
-        <ArrowRight size={12} />
-        <span>
-          <b>3</b> Copy body or create an X draft
-        </span>
-      </div>
+      {STANDALONE && (
+        <div className="workflow-strip">
+          <span>
+            <b>1</b> Paste or import Markdown
+          </span>
+          <ArrowRight size={12} />
+          <span>
+            <b>2</b> Preview updates automatically
+          </span>
+          <ArrowRight size={12} />
+          <span>
+            <b>3</b> Copy body or create an X draft
+          </span>
+        </div>
+      )}
       <div className="mobile-tabs" role="tablist" aria-label="Editor view">
         <button
           role="tab"
@@ -1005,7 +1007,7 @@ export default function App() {
             : "Saved on this device · X draft reviewed before creation"}
         </span>
         {!STANDALONE && (
-          <a href="/privacy.html" target="_blank" rel="noopener noreferrer">
+          <a href="/privacy" target="_blank" rel="noopener noreferrer">
             Privacy
           </a>
         )}
@@ -1316,17 +1318,27 @@ export default function App() {
                     <li>
                       <strong>Install the Chrome companion once</strong>
                       <p>
-                        Download and unzip it. Open chrome://extensions, enable
-                        Developer mode, then choose Load unpacked and select
-                        that folder.
+                        Add it from the Chrome Web Store, then refresh this
+                        page. The editor and copying also work without it.
                       </p>
                       <a
                         className="button-primary"
-                        href="/article-studio-bridge.zip"
-                        download
+                        href="https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh"
+                        target="_blank"
+                        rel="noreferrer"
                       >
-                        <ArrowDownToLine size={15} /> Download companion
+                        Install Chrome companion <ArrowRight size={15} />
                       </a>
+                      <details className="help-details">
+                        <summary>Install a development build</summary>
+                        <p>
+                          Download and unzip the companion. Open chrome://extensions,
+                          enable Developer mode, choose Load unpacked and select the folder.
+                        </p>
+                        <a href="/article-studio-bridge.zip" download>
+                          Download companion
+                        </a>
+                      </details>
                     </li>
                     <li>
                       <strong>Open your X Articles editor</strong>

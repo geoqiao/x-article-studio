@@ -2,13 +2,15 @@
 
 Item ID: `ojpjldmiiibgjnbjfiacaoenfgpdhbbh`
 Version: 0.1.0
-Status: **Pending review** — submitted September 16, 2026.
+Status: **Published** — public version 0.1.0 listing verified September 19, 2026; store update date September 17, 2026.
 Automatic publication after approval: enabled.
 
 - [Developer dashboard](https://chrome.google.com/webstore/devconsole/10ecee90-d360-49ac-9f0c-51eb74e01d7e/ojpjldmiiibgjnbjfiacaoenfgpdhbbh/edit/status)
-- [Store listing](https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh) (available after approval/publication)
+- [Store listing](https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh)
 
-The listing uses the website's logo, two screenshots, and the small promotional tile below. Category: Tools. Language: English. Distribution: free and public. The dashboard confirmed “Your extension was submitted for review” and then “This draft is pending review.”
+The listing uses the website's logo, two screenshots, and the small promotional tile below. Category: Tools. Language: English. Distribution: free and public. The submission was accepted on September 16. The public listing is now available.
+
+The description below contains a September 19 clarification separating extension privacy from website statistics, and canonical support/privacy URLs. These metadata edits still need to be saved in the Chrome Web Store dashboard; editing this file does not publish them.
 
 ## Description
 
@@ -33,13 +35,13 @@ How to use:
 
 The website works without an Article Studio account. Creating X drafts requires an X account with access to Articles. The extension creates drafts; publishing happens in X. It uses X's web editor interfaces, which may change.
 
-Markdown and images are prepared locally in your browser. The extension sends the article and images directly to X only after your confirmation. It uses the existing session in your X tab and does not ask for your password. No advertising or analytics tracking.
+Markdown and images are prepared locally in your browser. The extension sends the article and images directly to X only after your confirmation. It uses the existing session in your X tab and does not ask for your password. The companion does not include advertising or analytics tracking. The website collects visit statistics separately, as explained at md2xarticle.com/privacy.
 
 Article Studio is independent and is not affiliated with or endorsed by X Corp.
 
 Website: https://md2xarticle.com/
-Support: https://md2xarticle.com/support.html
-Privacy: https://md2xarticle.com/privacy.html
+Support: https://md2xarticle.com/support
+Privacy: https://md2xarticle.com/privacy
 
 ## Single purpose
 
@@ -83,12 +85,12 @@ The extension uses a packaged @kaitox/x-article client in the X tab's MAIN world
 - Store build output: ../../dist-extension-store/, production origin only
 - Development builds retain the localhost origins; do not upload their ZIP.
 
-## Submission validation
+## Submission validation (September 16, 2026)
 
 - `pnpm test`: 47 passing tests; type checks, production build, and store build passed.
 - Production-only store extension loaded in isolated Chromium against the live website. Bridge handoff, two-asset review, idempotent staging, missing-X-tab preflight, and discard passed.
 - A locally intercepted X tab was found with the reduced permissions. The packaged MAIN-world runner blocked creation when authentication was absent. These checks made no requests to X's service and did not create an actual X draft.
 - Deployed privacy and support pages returned HTTP 200. Cloudflare's build for `5630055` succeeded.
 - Google accepted the ZIP and all required listing fields. Privacy disclosures were checked after saving. The user verified the publisher contact email before submission.
-- The isolated `md2x-store-test` browser was closed after verification. No publication status beyond pending review has been confirmed.
+- The isolated `md2x-store-test` browser was closed after the original submission verification. Public availability was subsequently verified on September 19; live X draft creation remains unverified.
 

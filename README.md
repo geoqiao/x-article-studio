@@ -46,6 +46,8 @@ Test-coverage notes are under **How to use**. Main browser workflows were tested
 
 ## Connect the companion
 
+Install the [Article Studio X companion](https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh) from the Chrome Web Store for the production website. Its public 0.1.0 listing was verified on September 19, 2026. Refresh the website after installation. The store build is limited to the production origin; local development uses the unpacked build below.
+
 Build with `pnpm build:extension`, then open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `dist-extension/`. The app also offers the generated `article-studio-bridge.zip`; extract it before loading.
 
 Open a signed-in <https://x.com/compose/articles> tab and refresh Article Studio. The default development build accepts `http://127.0.0.1:4318` and `http://localhost:4318`. Production builds also accept `https://md2xarticle.com`. These are separate browser storage origins; drafts and attachments do not automatically move between them.
@@ -117,9 +119,15 @@ pnpm run deploy --dry-run
 pnpm run deploy
 ```
 
-Use `pnpm run deploy` explicitly: `pnpm deploy` is pnpm's separate workspace-packaging command. The production build supplies `ARTICLE_STUDIO_ORIGIN` from the shell; `.env.example` is documentation, not an automatically loaded configuration file. Reload the unpacked extension after rebuilding and refresh the web app to use the new origin. Chrome Web Store publication is separate and has not been performed.
+Use `pnpm run deploy` explicitly: `pnpm deploy` is pnpm's separate workspace-packaging command. The production build supplies `ARTICLE_STUDIO_ORIGIN` from the shell; `.env.example` is documentation, not an automatically loaded configuration file. Reload the unpacked extension after rebuilding and refresh the web app to use the new origin. Future Chrome Web Store package and listing updates remain separate from website deployment.
 
 The public app serves code and fonts; Markdown parsing, image preparation, and saved drafts stay in the browser. Opening a remote image URL still makes a request to its host. Only the companion's confirmed review action sends prepared article content to X.
+
+The homepage includes a visible, static product introduction in `index.html`; the editor mounts separately below it. Crawlers receive the title, workflow, links and application metadata without executing JavaScript. The 1200×630 social image has an editable SVG source in `public/og/`.
+
+`wrangler.www.jsonc` defines a separate redirect-only Worker for `www.md2xarticle.com`. Run `pnpm run deploy:www --dry-run` to validate it and `pnpm run deploy:www` to provision/update that custom domain and its managed TLS certificate. It sends a 308 to the HTTPS apex while retaining paths and queries. The editor remains a static-assets-only Worker. This separate configuration is not deployed by the existing main-branch build command.
+
+Website visit statistics use the reviewed local client in `public/telemetry.js`, injected into the three built HTML pages. It only sends on `https://md2xarticle.com`, honors DNT/GPC, preserves the existing VibeCafé visitor ID and sends only the v1 page-view payload without cookies or a referrer. This one-way request uses `no-cors`; the client never reads a response or claims server ingestion succeeded. Local previews and the companion send no VibeCafé events. See `/privacy` and the [September 19 verification and release notes](docs/seo-fixes-2026-09-19.md).
 
 ## Google Search Console
 

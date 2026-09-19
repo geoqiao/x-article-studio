@@ -2,13 +2,8 @@ import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
 
-// Public, Origin-restricted browser identifier for https://md2xarticle.com.
-const script = `<script
-  defer
-  src="https://vibecafe.ai/telemetry/v1.js"
-  data-vc-product-id="cmu4b884000000agmn23vud8y"
-  data-vc-auth-key="vc_web_uwddsAW9MiPVS4qjQmK-_qR4xeZXzDrr5NYFzK87xGk"
-></script>`;
+// The local client enforces the production origin and browser privacy signals.
+const script = '<script defer src="/telemetry.js" data-vc-product-id="cmu4b884000000agmn23vud8y"></script>';
 
 function sharedHead(html: string): string {
   // Replace an existing integration rather than accumulating script tags.

@@ -182,7 +182,7 @@ async page => {
   await loadExample();
   await page.getByRole('button', { name: 'Create X draft', exact: true }).click();
   await page.getByRole('dialog').waitFor();
-  assert(await page.getByRole('link', { name: standalone ? 'Open full app' : 'Download companion', exact: true }).count() === 1, 'Missing connection path');
+  assert(await page.getByRole('link', { name: standalone ? 'Open full app' : 'Install Chrome companion', exact: true }).count() === 1, 'Missing connection path');
   await closeDialog();
   results.push({ helpAndConnection: 'short instructions, format matrix, and concrete X setup' });
 
