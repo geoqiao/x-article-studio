@@ -1341,26 +1341,22 @@ export default function App() {
                       </details>
                     </li>
                     <li>
-                      <strong>Open your X Articles editor</strong>
-                      <p>
-                        <a
-                          href="https://x.com/compose/articles"
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Open X Articles ↗
-                        </a>{" "}
-                        and sign in, then refresh this app.
-                      </p>
-                    </li>
-                    <li>
                       <strong>Click Create X draft</strong>
                       <p>
                         Review the title and images in the companion, then
-                        confirm creation there.
+                        confirm creation there. The companion opens X Articles
+                        automatically and continues with your signed-in X session.
+                        Your account needs Articles access.
                       </p>
                     </li>
                   </ol>
+                  <p className="muted-note">
+                    If an older companion asks you to open X first, update it or{" "}
+                    <a href="https://x.com/compose/articles" target="_blank" rel="noreferrer">
+                      open X Articles
+                    </a>{" "}
+                    once, then retry.
+                  </p>
                   <button
                     className="button-outline"
                     onClick={async () => {

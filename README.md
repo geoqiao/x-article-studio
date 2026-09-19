@@ -50,7 +50,9 @@ Install the [Article Studio X companion](https://chromewebstore.google.com/detai
 
 Build with `pnpm build:extension`, then open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `dist-extension/`. The app also offers the generated `article-studio-bridge.zip`; extract it before loading.
 
-Open a signed-in <https://x.com/compose/articles> tab and refresh Article Studio. The default development build accepts `http://127.0.0.1:4318` and `http://localhost:4318`. Production builds also accept `https://md2xarticle.com`. These are separate browser storage origins; drafts and attachments do not automatically move between them.
+Companion 0.1.1 automatically reuses or opens <https://x.com/compose/articles> after confirmation in its review page, waits for the tab to load, then continues creation using the X session. You do not need to open X beforehand. If sign-in is needed, finish it in the X tab and retry from the review. Your account still needs Articles access. The published 0.1.0 companion requires opening X manually until its store update is available; the current unpacked build includes the improvement.
+
+The default development build accepts `http://127.0.0.1:4318` and `http://localhost:4318`. Production builds also accept `https://md2xarticle.com`. These are separate browser storage origins; drafts and attachments do not automatically move between them.
 
 The web page can stage a bundle and query connection status. Draft creation requires the extension’s review action. Images upload sequentially; their returned media IDs are inserted at the corresponding document positions. Any image failure prevents draft creation. An ambiguous create result requires checking X before another attempt. A retry may re-upload images already uploaded by a previous failed attempt.
 

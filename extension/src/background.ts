@@ -30,6 +30,7 @@ import {
   type JobRecord,
 } from './state.js';
 import { claimJob, deleteJob, getJob, putJob, updateJob } from './storage.js';
+import { focusXTab, getOrOpenXArticlesTab } from './x-tab.js';
 
 declare const __ARTICLE_STUDIO_ORIGINS__: readonly string[];
 declare const __ARTICLE_STUDIO_EXTENSION_VERSION__: string;
@@ -141,11 +142,16 @@ function toReviewView(job: JobRecord): ReviewJobView {
 
 async function openReview(jobId: string): Promise<void> {
   const reviewUrl = `${chrome.runtime.getURL('review.html')}?jobId=${encodeURIComponent(jobId)}`;
-  const openTabs = await chrome.tabs.query({});
-  const existing = openTabs.find((tab) => tab.url === reviewUrl);
-  if (existing?.id !== undefined) {
-    await chrome.tabs.update(existing.id, { active: true });
-    if (existing.windowId !== undefined) await chrome.windows.update(existing.windowId, { focused: true });
+  // Without the broad tabs permission, tabs.query hides even our own review URLs.
+  // Extension contexts expose our pages without access to unrelated browsing data.
+  const contexts = await chrome.runtime.getContexts({
+    contextTypes: [chrome.runtime.ContextType.TAB],
+    documentUrls: [reviewUrl],
+  });
+  const existing = contexts.find((context) => context.tabId >= 0);
+  if (existing) {
+    await chrome.tabs.update(existing.tabId, { active: true });
+    if (existing.windowId >= 0) await chrome.windows.update(existing.windowId, { focused: true });
     return;
   }
   await chrome.tabs.create({ url: reviewUrl, active: true });
@@ -176,20 +182,6 @@ async function readReviewJob(jobId: string): Promise<ReviewJobView | null> {
     await putJob(job);
   }
   return toReviewView(job);
-}
-
-async function findXArticlesTab(): Promise<chrome.tabs.Tab | null> {
-  const tabs = await chrome.tabs.query({});
-  const candidates = tabs.filter((tab) => {
-    if (tab.id === undefined || !tab.url) return false;
-    try {
-      const url = new URL(tab.url);
-      return url.protocol === 'https:' && url.hostname === 'x.com' && url.pathname.startsWith('/compose/articles');
-    } catch {
-      return false;
-    }
-  });
-  return candidates.find((tab) => tab.active) ?? candidates[0] ?? null;
 }
 
 async function injectRunner(tabId: number): Promise<void> {
@@ -238,20 +230,11 @@ async function runAttempt(job: JobRecord, attemptId: string): Promise<void> {
 
   let invocationStarted = false;
   try {
-    const tab = await findXArticlesTab();
-    if (!tab?.id) {
-      await updateAttempt(
-        job.jobId,
-        attemptId,
-        (current) => failJob(current, 'Open a signed-in https://x.com/compose/articles tab, then try again.', true),
-      );
-      return;
-    }
-
-    await injectRunner(tab.id);
+    const tabId = await getOrOpenXArticlesTab();
+    await injectRunner(tabId);
     await updateAttempt(job.jobId, attemptId, (current) => markUploading(current, 0));
     invocationStarted = true;
-    const result = await invokeRunner(tab.id, job.bundle);
+    const result = await invokeRunner(tabId, job.bundle);
     if (result.ok) {
       const draftUrl = `https://x.com/compose/articles/edit/${encodeURIComponent(result.restId)}`;
       await updateAttempt(job.jobId, attemptId, (current) => completeJob(current, result.restId, draftUrl));
@@ -260,6 +243,7 @@ async function runAttempt(job: JobRecord, attemptId: string): Promise<void> {
     } else {
       // Asset and preflight failures happen before ArticleEntityDraftCreate and can be retried explicitly.
       await updateAttempt(job.jobId, attemptId, (current) => failJob(current, result.message, true));
+      if (result.code === 'AUTH_REQUIRED') await focusXTab(tabId);
     }
   } catch (error) {
     const details = wireError(error, 'X_RUNNER_FAILED');

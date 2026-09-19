@@ -90,7 +90,7 @@ export async function runArticleDraft(input: unknown): Promise<RunnerResult> {
     await verifyDraftBundleHashes(bundle);
     const imageSources = ensureImageMapping(bundle);
     const csrfToken = readCsrfToken();
-    if (!csrfToken) throw new RunnerFailure('preflight', 'AUTH_REQUIRED', 'No ct0 cookie was found. Sign in to x.com and try again.');
+    if (!csrfToken) throw new RunnerFailure('preflight', 'AUTH_REQUIRED', 'Sign in to X in the X Articles tab, then return here and choose Create X draft. Your account needs Articles access.');
 
     const queryIds = deriveQueryIds();
     let client: XArticleClient;

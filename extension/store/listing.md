@@ -1,7 +1,7 @@
 # Chrome Web Store listing
 
 Item ID: `ojpjldmiiibgjnbjfiacaoenfgpdhbbh`
-Version: 0.1.0
+Published version: 0.1.0. Prepared update: 0.1.1 (automatic X Articles tab opening).
 Status: **Published** — public version 0.1.0 listing verified September 19, 2026; store update date September 17, 2026.
 Automatic publication after approval: enabled.
 
@@ -10,13 +10,13 @@ Automatic publication after approval: enabled.
 
 The listing uses the website's logo, two screenshots, and the small promotional tile below. Category: Tools. Language: English. Distribution: free and public. The submission was accepted on September 16. The public listing is now available.
 
-The description below contains a September 19 clarification separating extension privacy from website statistics, and canonical support/privacy URLs. These metadata edits still need to be saved in the Chrome Web Store dashboard; editing this file does not publish them.
+The description below includes automatic X Articles tab opening in 0.1.1, the September 19 clarification separating extension privacy from website statistics, and canonical support/privacy URLs. The new package and metadata still need to be submitted in the Chrome Web Store dashboard; editing this file does not publish them.
 
 ## Description
 
 Create X Article drafts from Markdown, with your images in place.
 
-Article Studio X companion connects the editor at md2xarticle.com to your signed-in X Articles tab. Prepare your article on the website, review the complete handoff in the extension, then create a draft in X.
+Article Studio X companion connects the editor at md2xarticle.com to X Articles. Prepare your article on the website, review the complete handoff in the extension, then confirm creation. The companion opens X Articles automatically and continues using your signed-in X session.
 
 - Import or paste Markdown and preview the article as you write.
 - Attach an image folder once. The companion uploads and places the prepared images in document order.
@@ -29,9 +29,8 @@ How to use:
 1. Install the extension and open md2xarticle.com.
 2. Paste Markdown or choose Example to try the included sample.
 3. Attach any missing image files and check the preview.
-4. Open x.com/compose/articles in the same Chrome profile and sign in.
-5. Choose Create X draft in Article Studio, then confirm in the extension's review page.
-6. Review and publish the resulting draft in X.
+4. Choose Create X draft in Article Studio, then confirm in the extension's review page. X Articles opens automatically if needed. If asked, sign in there and retry from the review page.
+5. Review and publish the resulting draft in X.
 
 The website works without an Article Studio account. Creating X drafts requires an X account with access to Articles. The extension creates drafts; publishing happens in X. It uses X's web editor interfaces, which may change.
 
@@ -49,7 +48,7 @@ Create an X Article draft, including its prepared images, from a Markdown articl
 
 ## Permission justifications
 
-scripting: Injects the packaged x-runner.js into an existing x.com/compose/articles tab after the user confirms Create X draft. The runner uploads the prepared images and creates the article draft using that tab's X session. All executable code is bundled in the extension.
+scripting: Injects the packaged x-runner.js into a loaded x.com/compose/articles tab after the user confirms Create X draft. The extension reuses an existing tab or opens one automatically. The runner uploads the prepared images and creates the article draft using that tab's X session. All executable code is bundled in the extension.
 
 Host permissions: https://md2xarticle.com/* allows the content script to receive a user-initiated article handoff from this exact website. https://x.com/compose/articles* allows the extension to locate the user's X Articles tab and run the bundled draft client there. No content scripts run on unrelated sites. There is no all-sites, tabs, cookies, or upload-host permission.
 
@@ -59,9 +58,9 @@ Data disclosures: Website content (article title, body, images and associated fi
 
 ## Reviewer instructions
 
-Submitted in Google's 500-character field:
+Prepared for the 0.1.1 reviewer field (not yet submitted):
 
-> No Article Studio login needed. Open https://md2xarticle.com/ > Example > Load example. Wait for preview, then Create X draft: review title, body and 2 images; no upload yet. Without an X Articles tab, confirmation is blocked; Discard clears the staged job. Actual creation requires your own X account with Articles access: open x.com/compose/articles in the same profile, then confirm in the extension. It creates an unpublished draft; publish separately in X. Toolbar icon opens the website.
+> Open https://md2xarticle.com/ > Example > Load example. Wait for preview, then Create X draft: review title, body and 2 images; no upload yet. Confirm to automatically open X Articles and create a draft. Use your own X account with Articles access. If asked, sign in in the X tab and retry from the review. Publishing is separate in X. Discard deletes the local staged job. No Article Studio login needed. Toolbar icon opens the website.
 
 Full workflow for reference:
 
@@ -70,8 +69,8 @@ No Article Studio login or developer-managed service account is required.
 1. Install the submitted extension, open https://md2xarticle.com/, and refresh the page if it was already open.
 2. Click Example, then Load example. It contains text, a local sample image, a table, and a Mermaid flowchart. Wait for the preview to finish.
 3. Click Create X draft in the website. The extension-owned review page opens with the title "A calmer way to publish", the prepared article body, and two image thumbnails. This step performs no X upload.
-4. With no X Articles tab open, click Create X draft in the review. It displays an instruction to open a signed-in https://x.com/compose/articles tab before making X requests. Discard staged article deletes the local staged job.
-5. To test actual draft creation, open https://x.com/compose/articles in the same Chrome profile using a reviewer-controlled X account that has Articles access. X controls account/subscription eligibility; we do not provide or operate X accounts. Repeat steps 2-3, check the review, and confirm Create X draft. This uploads the image assets and creates an unpublished X Article. Open the result in X to inspect the text, native table and image order. Publishing is a separate action in X.
+4. With no X Articles tab open, click Create X draft in the review. The extension opens https://x.com/compose/articles automatically and waits for it to load. If signed out, the X tab is focused and the review asks you to sign in before retrying. Discard staged article deletes the local staged job.
+5. To test actual draft creation, use a reviewer-controlled X account with Articles access in the same Chrome profile. X controls account/subscription eligibility; we do not provide or operate X accounts. Repeat steps 2-3 and confirm Create X draft. No pre-opened X tab is required. This uploads the image assets and creates an unpublished X Article. Open the result in X to inspect the text, native table and image order. Publishing is a separate action in X.
 6. Clicking the extension toolbar icon opens md2xarticle.com.
 
 The extension uses a packaged @kaitox/x-article client in the X tab's MAIN world. It uses the page's X session, reads ct0 locally, and sends requests directly to X. It does not export credentials to the website or a developer server. X's private editor operation IDs can change, so X integration availability is subject to X's current service.
@@ -81,7 +80,7 @@ The extension uses a packaged @kaitox/x-article client in the X tab's MAIN world
 - Icon: ../icons/icon-128.png (derived from the website's public/logo.png)
 - Screenshots: screenshot-editor.png, screenshot-review.png (1280 × 800)
 - Small promotional tile: small-promo.png (440 × 280)
-- Package: article-studio-0.1.0.zip, generated by pnpm build:store
+- Package: article-studio-0.1.1.zip, generated by pnpm build:store
 - Store build output: ../../dist-extension-store/, production origin only
 - Development builds retain the localhost origins; do not upload their ZIP.
 

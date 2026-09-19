@@ -1,6 +1,6 @@
 # Article Studio X companion
 
-This Manifest V3 extension connects Article Studio to X's article editor.
+This Manifest V3 extension connects Article Studio to X's article editor (Chrome 116+).
 The app content script accepts only request-ID messages from the exact app origin and
 stores no X session data. A received bundle is kept in extension IndexedDB and opened
 in an extension-owned review page. The X request starts only when **Create X draft**
@@ -16,16 +16,18 @@ After rebuilding, reload the unpacked extension at `chrome://extensions`, then
 refresh the app. Chrome Web Store publication is a separate step.
 
 For Chrome Web Store, run `pnpm build:store`. This creates
-`dist-extension-store/` and `extension/store/article-studio-0.1.0.zip`, restricted
+`dist-extension-store/` and `extension/store/article-studio-0.1.1.zip`, restricted
 to `https://md2xarticle.com` and the X article editor, without localhost access.
 The store package uses only `scripting` plus these host permissions. Tab lookup
 uses the matching host grants; it does not need the broader `tabs` permission.
+Review-page reuse uses `runtime.getContexts`, available since Chrome 116, because
+tab queries without the broader permission hide extension-page URLs.
 Media requests run inside the X page, so no upload-host grant is required.
 Clicking the toolbar icon opens Article Studio. The icons are resized from the
 website's `public/logo.png`; the same mark appears on the review page.
 
 Store listing and reviewer instructions: [store/listing.md](store/listing.md).
-Privacy policy: <https://md2xarticle.com/privacy.html>.
+Privacy policy: <https://md2xarticle.com/privacy>.
 
 The handoff validator accepts a non-empty title up to 2,000 characters and
 Markdown up to 200,000 characters. It allows at most 40 PNG, JPEG, or WebP
@@ -33,8 +35,13 @@ assets, with a 5 MiB decoded limit per asset and 20 MiB decoded in total. Each
 declared SHA-256 is checked before the bundle is staged and checked again before
 the X runner uses it.
 
-The review page looks for an existing signed-in
-`https://x.com/compose/articles` tab. The runner is injected into that tab's MAIN
+After confirmation in the review page, version 0.1.1 reuses an existing
+`https://x.com/compose/articles` tab or opens it automatically in the background.
+It waits up to 30 seconds for navigation to finish before starting the runner.
+Signed-in users need no extra click. A login redirect, absent session, closed tab
+or loading timeout stops the attempt before draft creation; the X tab is focused
+when available so the user can resolve the issue and retry. Articles eligibility
+remains controlled by X. The runner is injected into that tab's MAIN
 world and uses `@kaitox/x-article@0.6.0` with the page's own cookies. It uploads
 every bundled image before calling `ArticleEntityDraftCreate`; an asset failure
 prevents draft creation. It never calls a publish mutation. If the create request

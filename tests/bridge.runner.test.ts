@@ -75,6 +75,14 @@ beforeEach(() => {
 });
 
 describe('MAIN-world draft runner', () => {
+  it('asks for sign-in before uploading or creating when the X session is absent', async () => {
+    Object.defineProperty(globalThis, 'document', { configurable: true, value: { cookie: '' } });
+    const result = await runArticleDraft(bundle());
+    expect(result).toMatchObject({ ok: false, phase: 'preflight', code: 'AUTH_REQUIRED' });
+    expect(fakeClientState.uploadCalls).toEqual([]);
+    expect(fakeClientState.draftCalls).toBe(0);
+  });
+
   it('never calls draft creation after any image upload fails', async () => {
     fakeClientState.failOnByte = 2;
     const result = await runArticleDraft(bundle());

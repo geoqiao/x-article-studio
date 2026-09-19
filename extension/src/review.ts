@@ -1,6 +1,7 @@
 import type { ExtensionRequest, ReviewJobView, ReviewResponse } from './protocol.js';
 import type { DraftBundle } from '../../src/types.js';
 import { getJob } from './storage.js';
+import { X_ARTICLES_URL } from './x-tab.js';
 
 type ReviewRequest = Exclude<ExtensionRequest, { type: 'article-studio-page-request' }>;
 
@@ -51,7 +52,7 @@ function statusLabel(status: ReviewJobView['status']): string {
     case 'pending':
       return 'Ready for review';
     case 'creating':
-      return 'Starting X draft creation';
+      return 'Opening X Articles';
     case 'uploading':
       return 'Uploading images to X';
     case 'failed':
@@ -128,7 +129,9 @@ function renderView(view: ReviewJobView, bundle = previewBundle): void {
 
   if (view.status === 'creating' || view.status === 'uploading') {
     const progress = view.progress && view.progress.total > 0 ? ` (${view.progress.done}/${view.progress.total} images)` : '';
-    card.append(element('p', `The extension is working in the open X Articles tab${progress}. Keep this tab open while it finishes.`, 'muted'));
+    card.append(element('p', view.status === 'creating'
+      ? 'X Articles opens automatically. Once it loads, draft creation continues using your X session.'
+      : `The extension is working in the X Articles tab${progress}. Keep both tabs open while it finishes.`, 'muted'));
   }
 
   if (view.error) card.append(element('p', view.error, view.status === 'uncertain' ? 'warning' : 'error'));
@@ -136,11 +139,12 @@ function renderView(view: ReviewJobView, bundle = previewBundle): void {
 
   const actions = element('div', undefined, 'actions');
   if (view.status === 'pending' || (view.status === 'failed' && view.retryable)) {
+    card.append(element('p', 'Confirm to upload these images and create an X draft. We will open X Articles for you if needed.', 'muted'));
     appendButton(actions, 'Create X draft', () => void createDraft(), true);
   }
   if (view.status === 'uncertain') {
     appendButton(actions, 'Open X Articles', () => {
-      void chrome.tabs.create({ url: 'https://x.com/compose/articles', active: true });
+      void chrome.tabs.create({ url: X_ARTICLES_URL, active: true });
     });
     appendButton(actions, 'I checked X — allow another attempt', () => void armRetry(), true);
   }
@@ -189,7 +193,7 @@ async function refresh(): Promise<void> {
 async function createDraft(): Promise<void> {
   if (!current || actionInFlight || (current.status !== 'pending' && !(current.status === 'failed' && current.retryable))) return;
   actionInFlight = true;
-  notice = 'Waiting for the X Articles tab…';
+  notice = '';
   current = { ...current, status: 'creating', error: undefined };
   renderView(current);
   try {
