@@ -46,7 +46,7 @@ Test-coverage notes are under **How to use**. Main browser workflows were tested
 
 ## Connect the companion
 
-Install the [Article Studio X companion](https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh) from the Chrome Web Store for the production website. Its public 0.1.0 listing was verified on September 19, 2026. Refresh the website after installation. The store build is limited to the production origin; local development uses the unpacked build below.
+Install the [Article Studio X companion](https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh) from the Chrome Web Store for the production website. Its public 0.1.0 listing was verified on September 19, 2026; version 0.1.1 was submitted that day and is pending review with automatic publication after approval. Refresh the website after installation or update. The store build is limited to the production origin; local development uses the unpacked build below.
 
 Build with `pnpm build:extension`, then open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `dist-extension/`. The app also offers the generated `article-studio-bridge.zip`; extract it before loading.
 

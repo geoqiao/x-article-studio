@@ -1,8 +1,8 @@
 # Chrome Web Store listing
 
 Item ID: `ojpjldmiiibgjnbjfiacaoenfgpdhbbh`
-Published version: 0.1.0. Prepared update: 0.1.1 (automatic X Articles tab opening).
-Status: **Published** — public version 0.1.0 listing verified September 19, 2026; store update date September 17, 2026.
+Published version: 0.1.0. Submitted update: 0.1.1 (automatic X Articles tab opening).
+Status: **Pending review** for 0.1.1 — verified in the developer dashboard on September 19, 2026. Public 0.1.0 remains available until approval and rollout.
 Automatic publication after approval: enabled.
 
 - [Developer dashboard](https://chrome.google.com/webstore/devconsole/10ecee90-d360-49ac-9f0c-51eb74e01d7e/ojpjldmiiibgjnbjfiacaoenfgpdhbbh/edit/status)
@@ -10,7 +10,7 @@ Automatic publication after approval: enabled.
 
 The listing uses the website's logo, two screenshots, and the small promotional tile below. Category: Tools. Language: English. Distribution: free and public. The submission was accepted on September 16. The public listing is now available.
 
-The description below includes automatic X Articles tab opening in 0.1.1, the September 19 clarification separating extension privacy from website statistics, and canonical support/privacy URLs. The new package and metadata still need to be submitted in the Chrome Web Store dashboard; editing this file does not publish them.
+The description below includes automatic X Articles tab opening in 0.1.1, the September 19 clarification separating extension privacy from website statistics, and canonical support/privacy URLs. The 0.1.1 package, description, support/privacy URLs, permission explanation and reviewer instructions were saved and submitted on September 19. The dashboard confirmed **This draft is pending review**. Approval and public rollout remain controlled by Google.
 
 ## Description
 
@@ -58,7 +58,7 @@ Data disclosures: Website content (article title, body, images and associated fi
 
 ## Reviewer instructions
 
-Prepared for the 0.1.1 reviewer field (not yet submitted):
+Saved and submitted for the 0.1.1 reviewer field on September 19:
 
 > Open https://md2xarticle.com/ > Example > Load example. Wait for preview, then Create X draft: review title, body and 2 images; no upload yet. Confirm to automatically open X Articles and create a draft. Use your own X account with Articles access. If asked, sign in in the X tab and retry from the review. Publishing is separate in X. Discard deletes the local staged job. No Article Studio login needed. Toolbar icon opens the website.
 
