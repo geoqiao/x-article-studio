@@ -31,11 +31,11 @@ flowchart LR
 
 | Layer | Responsibility | Main files |
 | --- | --- | --- |
-| Planner | Retain reference definitions, identify unsupported constructs, replace generated assets, verify placement against Kaitox output | `src/plan.ts` |
+| Planner | Optional H1 with editable title fallback; normalize safe HTML, retain reference definitions, verify content and asset placement against Kaitox output | `src/plan.ts`, `src/normalize.ts` |
 | Image resolution | Match attached files, reject ambiguous paths, CORS downloads without credentials, MIME/size checks | `src/files.ts` |
 | Rendering | Mermaid strict mode, normalized SVG rasterization, table canvas rendering | `src/render.ts` |
-| Preparation | All assets ready before handoff; dimensions, SHA-256, sanitized preview, portable ZIP | `src/prepare.ts`, `src/portable.ts` |
-| Editor | Source/asset/preview views, import, format guide, browser persistence | `src/App.tsx`, `src/ArticlePreview.tsx`, `src/storage.ts` |
+| Preparation | Cached successful assets; dimensions, SHA-256, sanitized preview, complete ZIP or independent source backup | `src/prepare.ts`, `src/portable.ts`, `src/backup.ts` |
+| Editor | Source/asset/preview views, wrapped line-number gutter, error navigation, import, persistence | `src/App.tsx`, `src/MarkdownEditor.tsx`, `src/ArticlePreview.tsx`, `src/storage.ts` |
 | Web bridge | Request IDs, status/stage messages, bundle validation | `src/bridge.ts` |
 | Extension | Origin checks, IndexedDB jobs, own review page, draft creation state | `extension/src/` |
 | X runner | Same-origin session use, media upload, content-state creation, private draft mutation | `extension/src/x-runner.ts` |
@@ -50,7 +50,9 @@ Local Markdown contains paths, not image bytes. File selection exposes only file
 
 Every explicit Markdown import starts with only the attachments supplied in that import, even when its filename and text are unchanged. It clears overrides, undo, progress, and the previous prepared bundle/object URLs. Imports use a sequence guard so a delayed earlier file read cannot overwrite a newer import or a New/Example action. Page reload still resumes the saved current draft, including its selected images.
 
-The editor automatically prepares assets after a short pause in typing. Each request is cancelled when its input changes; stale results are disposed and cannot enable export or draft creation. An existing preview image can remain visible only when the attached files, document path, image source, and generated-image inputs still match. Drawer thumbnails also match by source rather than ordinal asset ID. Updating status accounts for changed inputs immediately, before the preparation effect starts. The UI never writes to X during this process.
+The editor automatically prepares assets after a short pause in typing. Each request is cancelled when its input changes; stale results are disposed and cannot enable a complete export or draft creation. Successful asset bytes are reused across title/text edits when the selected File, remote URL, diagram code, or table cells match. Each preparation owns independent object URLs. Retry clears the cache; New, Example, and imports reset it. Failures are not cached. An existing preview image can remain visible only when the attached files, document path, image source, and generated-image inputs still match. Drawer thumbnails also match by source rather than ordinal asset ID. Updating status accounts for changed inputs immediately, before the preparation effect starts. The UI never writes to X during this process.
+
+Title, body copy, source backup, and X handoff have separate readiness conditions. A missing H1 never blocks handoff: the title field falls back through metadata, H1, filename, and Untitled article. Body copy uses the current plan and marks unprepared images. Source backup does not require conversion and includes the exact original Markdown plus selected files and mappings. Only complete, current assets and a valid plan enable handoff. Harmless HTML normalization is confined to parsed HTML tokens and maps error locations back to original source lines. Flattening lists changes source only on explicit action, preserving frontmatter and refusing complex blocks it cannot safely flatten.
 
 The manual clipboard route is separate from draft creation. A dedicated serializer removes the article title and preview wrappers/attributes, maps preview h2/h3 to clipboard h1/h2 (X's header-one/header-two blocks), and replaces image figures with placement markers. It supplies both semantic HTML and readable plaintext; list markers, link destinations, table cells, and literal code remain readable in plain-text receivers. It never substitutes the source Markdown for the body.
 

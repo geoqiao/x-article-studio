@@ -22,13 +22,15 @@ pnpm dev
 
 Open <http://127.0.0.1:4318>. No backend, API key, paid image generator, or relay server is needed. Rendering and saved drafts use the browser. Fonts are self-hosted.
 
-1. Paste Markdown into the left editor, use **Import Markdown**, or drop a `.md`/`.markdown` file into the editor. The first H1 becomes the title.
+1. Paste Markdown into the left editor, use **Import Markdown**, or drop a `.md`/`.markdown` file into the editor. H1 is optional. Edit **Article title** above the preview; its automatic value uses frontmatter, the first H1, the filename, or “Untitled article”.
 2. The preview updates automatically, including Mermaid and attached images. Add pictures through **Images**, or paste/drop them into the editor. For local Markdown (including Obsidian), use **Match image folder** once: choose the image folder or its parent. Only referenced images are attached; the Markdown stays unchanged. Individual files also match longer relative paths when their filenames are unambiguous.
 3. Use the **Tables** selector above the preview to keep native tables or render PNGs. The **Table** and **Diagram** toolbar buttons insert examples at the cursor.
 4. **Copy title** copies the separate title. **Copy body** copies formatted rich text with X's two heading levels, emphasis, links, lists, and quotes. Use regular Paste in the X Articles body field. Plain-text applications receive readable prose, with list markers and link destinations. If clipboard permissions are blocked, selection copying is tried automatically; the final fallback lets you select and copy the formatted body. Copy individual PNGs from **Images** at the image markers; clipboard pasting does not automatically upload images or guarantee native table preservation.
 5. **Create X draft** uses the companion to upload and place all images automatically. It first opens the companion’s review; confirmation there starts the X write. Publishing remains separate.
 
-Missing files and unsupported constructs show an action beside the preview. There is no manual preparation step. **Export ZIP** remains available for portable Markdown and images, and **Save Markdown** downloads the original source. **How to use** contains a short guide, an optional title override, and the test/limitation notes.
+All blocking issues appear together above the preview, with repair actions and links to the editor's line numbers. A line link selects the affected source block and highlights its gutter number, including on phones. Simple nested lists offer **Convert to one level**, preserving all items for review. There is no manual preparation step.
+
+**Copy body** remains available while images are missing or preparing; each image becomes a labeled placement marker. Known text-loss constructs still require correction before copying. **Export ZIP** downloads a complete portable article when ready; otherwise it downloads a clearly named `-source-backup.zip` with unchanged Markdown, selected local files, attachment mappings, and outstanding issues. Source backups exclude remote images not selected locally and require manual reattachment when restored. **Save Markdown** always downloads the original source. **How to use** contains a short guide and the test/limitation notes.
 
 Every ordinary image or missing-image placeholder has **Replace image / Choose image** directly beneath it. After a replacement, **Undo change** restores the previous choice (one step per image during the current session). **Fix image** still opens its card in the Images drawer. Image choices persist across reloads; undo history does not. Changing a shared image source updates all its occurrences.
 
@@ -70,10 +72,15 @@ See [extension instructions](extension/README.md) and [architecture](docs/archit
 | Fenced code | Native Markdown entity; highlighting depends on X |
 | H1/H2/H3 | Title plus two body heading levels |
 | H4–H6, inline code, task checkboxes | Reduced heading depth / lost monospace or checkbox state, with warnings |
-| Nested lists, raw HTML, footnotes, nested images/diagrams | Blocked where the converter would lose content |
-| Math, covers, ALT descriptions, GIF/SVG/video | Not implemented by this prototype; set or convert separately |
+| Simple nested lists | Explicit one-click conversion to single-level items; review before handoff |
+| HTML `<br>` outside tables / comments | Converted to line breaks / omitted without modifying original source |
+| Other HTML, footnotes, complex list blocks, nested images/diagrams | Blocked where the converter would lose content |
+| Math | Source kept as plain text/code, with a warning; use an image for rendered notation |
+| Covers, ALT descriptions, GIF/SVG/video | Not implemented by this prototype; set or convert separately |
 
 The distinction between X platform capabilities and this bridge’s limitations matters. For example, **X’s official API documents LaTeX and native tables**. This prototype implements tables through Kaitox’s private adapter, but not LaTeX. See the [complete compatibility matrix and sources](docs/compatibility.md).
+
+The [draft-flow UX audit](docs/draft-flow-2026-09-23.md) records which conditions still block creation and how users recover.
 
 ## Limits and storage
 

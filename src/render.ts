@@ -21,7 +21,8 @@ export async function renderDiagram(code: string): Promise<Blob> {
     const result = await renderMermaidPng(await renderer, code);
     return new Blob([new Uint8Array(result.bytes)], { type: result.mimeType });
   } catch (error) {
-    throw new Error(`Mermaid could not render: ${error instanceof Error ? error.message.slice(0, 280) : 'check the diagram syntax.'}`);
+    const line = error instanceof Error ? /(?:parse error on|syntax error in text.*) line (\d+)/i.exec(error.message)?.[1] : undefined;
+    throw new Error(line ? `Mermaid syntax error near diagram line ${line}. Check this code block.` : 'Mermaid could not render. Check the diagram syntax or try a smaller diagram.');
   } finally { release(); }
 }
 

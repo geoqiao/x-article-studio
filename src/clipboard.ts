@@ -3,7 +3,7 @@ import type { PreparedArticle } from "./types";
 export type ArticleClipboard = { html: string; text: string };
 
 /** Clipboard HTML follows X's block names, independently of preview styling. */
-export function createArticleClipboard(article: PreparedArticle): ArticleClipboard {
+export function createArticleClipboard(article: Pick<PreparedArticle, 'plan' | 'previewHtml' | 'assets'>): ArticleClipboard {
   const body = document.createElement("div");
   const preview = document.createElement("template");
   preview.innerHTML = article.previewHtml; // Already sanitized by safePreview.
@@ -21,16 +21,14 @@ export function createArticleClipboard(article: PreparedArticle): ArticleClipboa
   }
   // Pasted HTML cannot reliably transfer local image bytes into X. Leave useful
   // placement markers instead of copying object URLs that expire in this app.
-  for (const image of body.querySelectorAll("img")) {
-    const asset = article.assets.find(
-      (item) => item.url === image.getAttribute("src"),
-    );
+  for (const figure of body.querySelectorAll("figure.xp-fig")) {
+    const spec = article.plan.assets.find(item => item.id === figure.getAttribute("data-asset-id"));
     const marker = document.createElement("p");
     marker.textContent =
       "[Image: " +
-      (asset?.spec.label || "image") +
+      (spec?.label || "image") +
       " — add from the Images panel]";
-    (image.closest("figure") || image).replaceWith(marker);
+    figure.replaceWith(marker);
   }
   // Layout wrappers and xp-* attributes belong to the preview, not the article.
   for (const wrapper of body.querySelectorAll("div, figure")) {

@@ -84,7 +84,8 @@ export async function fetchImageFile(source: string, signal?: AbortSignal): Prom
     }
     return new Blob(chunks, { type: response.headers.get('content-type')?.split(';')[0] || '' });
   } catch (error) {
-    if (error instanceof TypeError) throw new Error('The image host blocks browser downloads (CORS), redirects, or needs a login. Download the image and attach it here.');
+    if (controller.signal.aborted && !signal?.aborted) throw new Error('Image download timed out. Retry or attach a local file.');
+    if (error instanceof TypeError) throw new Error('Could not download this image (network, CORS or login restriction). Retry or attach a local file.');
     throw error;
   } finally { clearTimeout(timeout); signal?.removeEventListener('abort', abort); }
 }

@@ -126,7 +126,7 @@ async page => {
 
   await source().fill('# Missing image\n\nKeep this text.\n\n![Missing](not-here.png)');
   await page.getByRole('button', { name: 'Add / fix images', exact: true }).waitFor();
-  assert(await page.getByRole('button', { name: 'Export ZIP', exact: true }).isDisabled(), 'Incomplete article can be exported');
+  assert(await page.getByRole('button', { name: 'Export ZIP', exact: true }).isEnabled(), 'Source backup is unavailable for an incomplete article');
   await page.getByRole('button', { name: 'Add / fix images', exact: true }).click();
   await page.getByLabel('Replace Missing', { exact: true }).setInputFiles('/tmp/article-studio-photo.png');
   await ready();
@@ -135,10 +135,10 @@ async page => {
   results.push({ missingImage: 'inline action opens chooser; replacing file resolves error automatically' });
 
   await source().fill('# Invalid diagram\n\n' + String.fromCharCode(96).repeat(3) + 'mermaid\nflowchart LR\n A--?>???\n' + String.fromCharCode(96).repeat(3));
-  await page.getByRole('button', { name: 'Edit source', exact: true }).waitFor();
+  await page.getByRole('button', { name: /Line \d+ · Edit source/ }).waitFor();
   assert((await page.locator('.preview-alert').innerText()).includes('Mermaid'), 'Diagram error mislabeled as missing file');
   assert(await page.getByRole('button', { name: 'Create X draft', exact: true }).isDisabled(), 'Malformed diagram can be sent');
-  await page.getByRole('button', { name: 'Edit source', exact: true }).click();
+  await page.getByRole('button', { name: /Line \d+ · Edit source/ }).click();
   await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Markdown source');
   assert(await source().evaluate(el => document.activeElement === el), 'Fix action did not focus source');
   results.push({ invalidMermaid: 'specific error and direct source-edit action' });
@@ -156,8 +156,8 @@ async page => {
   await source().fill('# Latest draft\n\nFirst text');
   await source().fill('# Latest draft\n\nSecond text');
   await source().fill('# Latest draft\n\n**中文内容 🚀**\n\n- Parent\n  - Nested child');
-  await page.getByRole('button', { name: 'Go to line', exact: true }).waitFor();
-  assert((await page.locator('.preview-alert').innerText()).includes('nested'), 'Known content loss not blocked');
+  await page.getByRole('button', { name: /Go to line/ }).waitFor();
+  assert(/nested/i.test(await page.locator('.preview-alert').innerText()), 'Known content loss not blocked');
   await page.waitForFunction(() => document.querySelector('.save-status')?.textContent === 'Saved locally');
   await page.reload();
   await page.waitForFunction(() => !document.querySelector('textarea')?.disabled);

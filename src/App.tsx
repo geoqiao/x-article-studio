@@ -28,7 +28,11 @@ import {
   safePreview,
   disposeAssets,
   exportArticle,
+  type AssetCache,
 } from "./prepare";
+import { exportDraftBackup } from "./backup";
+import { simplifyNestedLists } from "./normalize";
+import { MarkdownEditor } from "./MarkdownEditor";
 import {
   downloadBlob,
   MAX_TOTAL_BYTES,
@@ -76,7 +80,8 @@ export default function App() {
   const [imageUndo, setImageUndo] = useState<Map<string, File | undefined>>(
     new Map(),
   );
-  const [documentPath, setDocumentPath] = useState("article.md");
+  const [documentPath, setDocumentPath] = useState("");
+  const [highlightedLine, setHighlightedLine] = useState<number>();
   const [booting, setBooting] = useState(true);
   const [saving, setSaving] = useState("Saved locally");
   const [prepared, setPrepared] = useState<{
@@ -103,6 +108,8 @@ export default function App() {
   >(null);
   const manualBody = useRef<HTMLDivElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
+  const titleInput = useRef<HTMLInputElement>(null);
+  const assetCache = useRef<AssetCache>(new Map());
   const markdownInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
   const imageInput = useRef<HTMLInputElement>(null);
@@ -110,8 +117,8 @@ export default function App() {
   const activeAssets = useRef<PreparedArticle | undefined>(undefined);
   const importSequence = useRef(0);
   const plan = useMemo(
-    () => createPlan(markdown, tableMode, title),
-    [markdown, tableMode, title],
+    () => createPlan(markdown, tableMode, title, documentPath),
+    [markdown, tableMode, title, documentPath],
   );
   const current =
     prepared?.article.plan === plan &&
@@ -123,6 +130,11 @@ export default function App() {
   const errors = issues.filter((issue) => issue.severity === "error");
   const warnings = issues.filter((issue) => issue.severity === "warning");
   const ready = current && !!article && !busy && !errors.length && !renderError;
+  const canCopyBody = hasContent && !booting && !plan.issues.some(issue =>
+    issue.severity === "error" && !["title-format", "markdown-limit", "asset-count"].includes(issue.id));
+  const canExport = hasContent && !booting && !exporting;
+  const simplifiedLists = useMemo(() => plan.issues.some(issue => issue.id === "nested-list")
+    ? simplifyNestedLists(markdown) : markdown, [markdown, plan]);
   const updating =
     booting || (hasContent && !renderError && (busy || !current));
   const previewAssets = useMemo(() => {
@@ -148,15 +160,8 @@ export default function App() {
     (asset) => asset.state === "error",
   );
   const missingImages = assetErrors.filter(
-    (error) =>
-      plan.assets.find((asset) => asset.id === error.id)?.kind === "image",
+    (error) => error.reason === "missing-file",
   );
-  const brokenGeneratedAsset = plan.assets.find(
-    (asset) =>
-      asset.kind !== "image" &&
-      assetErrors.some((error) => error.id === asset.id),
-  );
-  const firstError = errors.find((issue) => !issue.id.startsWith("prepare-"));
   const modeLabel = STANDALONE ? "HTML preview" : "Markdown to X Articles";
 
   useEffect(() => {
@@ -169,7 +174,7 @@ export default function App() {
           setMarkdown(saved.markdown);
           setTitle(saved.title || "");
           setTableMode(saved.tableMode === "image" ? "image" : "native");
-          setDocumentPath(saved.documentPath || "article.md");
+          setDocumentPath(saved.documentPath || "");
           setFiles(new Map(saved.files || []));
         } else {
           const sample = await createSampleImage();
@@ -213,6 +218,7 @@ export default function App() {
               setProgress((old) => ({ ...old, [next.id]: next }));
           },
           controller.signal,
+          assetCache.current,
         );
         if (controller.signal.aborted) {
           disposeAssets(result.assets);
@@ -316,7 +322,7 @@ export default function App() {
         path = normalizePath(docs[0].webkitRelativePath || docs[0].name);
       }
       if (sequence !== importSequence.current) return;
-      const target = text === undefined ? plan : createPlan(text, tableMode);
+      const target = text === undefined ? plan : createPlan(text, tableMode, "", path);
       const sources = target.assets
         .filter((asset) => asset.kind === "image")
         .map((asset) => asset.source);
@@ -461,6 +467,8 @@ export default function App() {
   }
 
   function clearPreparedArticle() {
+    assetCache.current.clear();
+    setHighlightedLine(undefined);
     if (activeAssets.current) disposeAssets(activeAssets.current.assets);
     activeAssets.current = undefined;
     setPrepared(undefined);
@@ -474,6 +482,11 @@ export default function App() {
     setNotice(
       "Image changed. Use Undo change beside the image to restore the previous choice.",
     );
+  }
+
+  function showAsset(id: string) {
+    setModal("images");
+    requestAnimationFrame(() => document.getElementById("asset-" + id)?.scrollIntoView({ block: "nearest" }));
   }
 
   function undoImage(source: string) {
@@ -498,14 +511,16 @@ export default function App() {
     );
   }
   async function exportZip() {
-    if (!article || !ready) return;
+    if (!canExport) return;
     setExporting(true);
     try {
+      const complete = ready && article;
       downloadBlob(
-        await exportArticle(article),
-        safeFileStem(plan.title) + ".zip",
+        complete ? await exportArticle(article) : await exportDraftBackup(
+          { markdown, title, tableMode, documentPath }, files, issues),
+        safeFileStem(plan.title) + (complete ? ".zip" : "-source-backup.zip"),
       );
-      setNotice("Downloaded Markdown and all images together.");
+      setNotice(complete ? "Downloaded Markdown and all prepared images." : "Source backup downloaded with selected local files. Unresolved images and formatting still need attention before creating a draft.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Export failed.");
     } finally {
@@ -523,15 +538,15 @@ export default function App() {
     }
   }
   async function copyBody() {
-    if (!ready || !article) return;
+    if (!canCopyBody) return;
     setCopied("");
     setNotice("");
-    const body = createArticleClipboard(article);
+    const body = createArticleClipboard({ plan, assets: previewAssets, previewHtml: preview });
     try {
       await copyArticleBody(body);
       setCopied("body");
       setNotice(
-        article.assets.length
+        plan.assets.length
           ? "Formatted body copied. Paste into X Articles, then add the images from the Images panel."
           : "Formatted body copied. Paste it into the X Articles body field.",
       );
@@ -569,9 +584,11 @@ export default function App() {
     }
   }
   function jump(line: number) {
+    setHighlightedLine(undefined);
     setMobileView("write");
     setModal(null);
     requestAnimationFrame(() => {
+      setHighlightedLine(line);
       const start =
         markdown
           .split("\n")
@@ -597,7 +614,7 @@ export default function App() {
     setImageUndo(new Map());
     setTitle("");
     setTableMode("native");
-    setDocumentPath("article.md");
+    setDocumentPath("");
     setMobileView("write");
     setMarkdown(example ? SAMPLE : "");
     setFiles(nextFiles);
@@ -649,9 +666,9 @@ export default function App() {
           </button>
           <button
             onClick={copyBody}
-            disabled={!ready}
+            disabled={!canCopyBody}
             className="button-primary"
-            title="Copy formatted rich text for the X Articles body field"
+            title={canCopyBody ? "Copy formatted text; images become placement markers" : "Resolve the content issues shown in the preview before copying"}
           >
             <Copy size={14} />
             {copied === "body" ? "Copied!" : "Copy body"}
@@ -660,7 +677,7 @@ export default function App() {
             onClick={handoff}
             disabled={!ready || sending}
             className="button-outline"
-            title="Upload images and create a draft through the Chrome companion"
+            title={errors.length ? "Resolve the issues shown below the article title" : updating ? "Preparing the article…" : !hasContent ? "Add article content first" : "Open companion review to create a draft"}
           >
             {sending ? (
               <LoaderCircle className="spin" size={14} />
@@ -671,6 +688,10 @@ export default function App() {
             )}{" "}
             Create X draft <ArrowRight size={14} />
           </button>
+          {(errors.length > 0 || renderError) && <button className="draft-issues-link" onClick={() => {
+            setMobileView("preview");
+            requestAnimationFrame(() => document.getElementById("draft-issues")?.focus());
+          }}>{errors.length ? `${errors.length} ${errors.length === 1 ? "item" : "items"} to fix` : "View preview error"}</button>}
         </div>
       </div>
 
@@ -712,7 +733,7 @@ export default function App() {
             <strong>
               <Code2 size={15} /> Markdown
             </strong>
-            <span>{documentPath.split("/").pop()}</span>
+            <span>{documentPath.split("/").pop() || "Untitled.md"}</span>
             <button
               onClick={saveMarkdown}
               title="Download your original Markdown"
@@ -777,17 +798,18 @@ export default function App() {
               <ImageIcon size={15} /> Image
             </button>
           </div>
-          <textarea
-            ref={textarea}
+          <MarkdownEditor
+            inputRef={textarea}
+            highlightedLine={highlightedLine}
             aria-label="Markdown source"
             value={markdown}
             disabled={booting}
             spellCheck={false}
             maxLength={MAX_MARKDOWN_LENGTH}
             placeholder={
-              "# Your article title\n\nPaste your Markdown here, or use Import Markdown above.\n\nTables and Mermaid diagrams render automatically."
+              "Paste your Markdown here, or use Import Markdown above.\n\nA heading is optional. Edit the article title above the preview."
             }
-            onChange={(event) => setMarkdown(event.target.value)}
+            onChange={(event) => { setMarkdown(event.target.value); setHighlightedLine(undefined); }}
             onKeyDown={(event) => {
               if (
                 (event.metaKey || event.ctrlKey) &&
@@ -872,65 +894,47 @@ export default function App() {
               </button>
             </div>
           </div>
+          <div className="article-title-field">
+            <label htmlFor="article-title">Article title</label>
+            <input id="article-title" ref={titleInput} value={title || plan.title}
+              disabled={booting} maxLength={2_000}
+              onChange={event => setTitle(event.target.value)}
+              aria-describedby="title-hint" />
+            <div id="title-hint">
+              <span>{title ? "Custom title" : "Detected from your article or filename; edit here."}</span>
+              {title && <button onClick={() => setTitle("")}>Use automatic title</button>}
+            </div>
+          </div>
           {(errors.length > 0 || renderError) && (
-            <div className="preview-alert" role="status">
+            <div className="preview-alert" id="draft-issues" tabIndex={-1} role="status">
               <CircleAlert size={16} />
               <div>
-                <strong>
-                  {missingImages.length
-                    ? missingImages.length +
-                      " image" +
-                      (missingImages.length === 1
-                        ? " needs a file"
-                        : "s need attention")
-                    : brokenGeneratedAsset
-                      ? brokenGeneratedAsset.kind === "mermaid"
-                        ? "The Mermaid diagram could not render"
-                        : "The table image could not render"
-                      : renderError ||
-                        firstError?.message ||
-                        "Check your article"}
-                </strong>
-                {missingImages.length > 0 ? (
-                  <p>
-                    Markdown contains paths, not image files. Select the image
-                    folder once to match them automatically.
-                  </p>
-                ) : brokenGeneratedAsset ? (
-                  <p>{progress[brokenGeneratedAsset.id]?.message}</p>
-                ) : (
-                  firstError && (
-                    <p>
-                      Line {firstError.line} · Fix this before copying or
-                      creating a draft.
-                    </p>
-                  )
-                )}
+                <strong>{errors.length ? `${errors.length} ${errors.length === 1 ? "item" : "items"} to resolve before creating a draft` : "Preview could not update"}</strong>
+                <div className="blocking-issues">
+                  {errors.map((issue, index) => {
+                    const asset = issue.id.startsWith("prepare-")
+                      ? plan.assets.find(item => `prepare-${item.id}` === issue.id) : undefined;
+                    return <div className="blocking-issue" key={`${issue.id}-${index}`}>
+                      <p>{asset ? `${asset.label}: ` : ""}{issue.message}</p>
+                      <div className="issue-actions">
+                        {issue.id === "title-format" ? <button onClick={() => titleInput.current?.focus()}>Edit title</button>
+                          : <button onClick={() => jump(issue.line)}>Line {issue.line} · {asset && asset.kind !== "image" ? "Edit source" : "Go to line"}</button>}
+                        {asset?.kind === "image" && <button onClick={() => showAsset(asset.id)}>Add / fix images</button>}
+                        {issue.id === "nested-list" && simplifiedLists !== markdown &&
+                          <button onClick={() => {
+                            setMarkdown(simplifiedLists);
+                            setNotice("Converted simple nested lists to one level. Review the updated preview.");
+                          }}>Convert to one level</button>}
+                      </div>
+                    </div>;
+                  })}
+                  {renderError && <p>{renderError}</p>}
+                </div>
+                <div className="issue-actions">
+                  {missingImages.length > 0 && <button onClick={() => folderInput.current?.click()}><FolderOpen size={14} /> Match image folder</button>}
+                  {(assetErrors.some(error => error.reason !== "missing-file") || renderError) && <button onClick={() => { assetCache.current.clear(); setRetry(value => value + 1); }}>Retry</button>}
+                </div>
               </div>
-              {missingImages.length > 0 && (
-                <button onClick={() => folderInput.current?.click()}>
-                  <FolderOpen size={14} /> Match image folder
-                </button>
-              )}
-              <button
-                onClick={() =>
-                  missingImages.length
-                    ? setModal("images")
-                    : brokenGeneratedAsset
-                      ? jump(brokenGeneratedAsset.line)
-                      : firstError
-                        ? jump(firstError.line)
-                        : setRetry((value) => value + 1)
-                }
-              >
-                {missingImages.length
-                  ? "Add / fix images"
-                  : brokenGeneratedAsset
-                    ? "Edit source"
-                    : firstError
-                      ? "Go to line"
-                      : "Retry"}
-              </button>
             </div>
           )}
           <div className={"preview-scroll " + (phone ? "phone-view" : "")}>
@@ -954,14 +958,7 @@ export default function App() {
                   canUndo={(source) => imageUndo.has(source)}
                   onReplace={replaceImage}
                   onUndo={undoImage}
-                  onFix={(asset) => {
-                    setModal("images");
-                    requestAnimationFrame(() =>
-                      document
-                        .getElementById("asset-" + asset.id)
-                        ?.scrollIntoView({ block: "nearest" }),
-                    );
-                  }}
+                  onFix={(asset) => showAsset(asset.id)}
                 />
               </article>
             )}
@@ -1011,7 +1008,7 @@ export default function App() {
             Privacy
           </a>
         )}
-        <button onClick={exportZip} disabled={!ready || exporting}>
+        <button onClick={exportZip} disabled={!canExport} title={ready ? "Download the prepared article" : "Download source Markdown and selected files, including unresolved items"}>
           <ArrowDownToLine size={13} />
           {exporting ? "Exporting…" : "Export ZIP"}
         </button>
@@ -1272,12 +1269,12 @@ export default function App() {
                 <button
                   className="button-primary"
                   onClick={exportZip}
-                  disabled={!ready || exporting}
+                  disabled={!canExport}
                 >
                   <ArrowDownToLine size={15} /> Download all (.zip)
                 </button>
                 <button
-                  onClick={() => setRetry((value) => value + 1)}
+                  onClick={() => { assetCache.current.clear(); setRetry((value) => value + 1); }}
                   disabled={busy}
                 >
                   Retry rendering
@@ -1389,7 +1386,7 @@ export default function App() {
                   <strong>Paste or import your Markdown</strong>
                   <p>
                     Write in the left panel, import a .md file, or drop one into
-                    the editor. The first # heading becomes the title.
+                    the editor. A heading is optional; edit the title above the preview.
                   </p>
                 </li>
                 <li>
@@ -1414,21 +1411,9 @@ export default function App() {
               </ol>
               <p className="inline-note">
                 Nothing is sent to X while you write. Your draft is saved in
-                this browser. Export ZIP downloads Markdown and all prepared
-                images together.
+                this browser. Export ZIP includes Markdown and prepared images.
+                If preparation is incomplete, it saves the original source and selected local files instead.
               </p>
-              <details className="help-details">
-                <summary>Change the article title</summary>
-                <label>
-                  Title override
-                  <input
-                    aria-label="Article title override"
-                    value={title}
-                    placeholder={plan.title || "Use the first # heading"}
-                    onChange={(event) => setTitle(event.target.value)}
-                  />
-                </label>
-              </details>
               <details className="help-details">
                 <summary>Testing and current limitations</summary>
                 <p>

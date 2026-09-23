@@ -7,5 +7,5 @@ export type BundleAsset = { source: string; fileName: string; mime: string; base
 export type DraftBundle = { schemaVersion: 1; jobId: string; title: string; markdown: string; assets: BundleAsset[]; createdAt: string };
 export type PreparedAsset = { spec: AssetSpec; blob: Blob; url: string; width: number; height: number; fileName: string; sha256: string };
 export type PreparedArticle = { plan: ArticlePlan; bundle: DraftBundle; assets: PreparedAsset[]; previewHtml: string; issues: Issue[] };
-export type AssetProgress = { id: string; state: 'preparing' | 'ready' | 'error'; message?: string };
+export type AssetProgress = { id: string; state: 'preparing' | 'ready' | 'error'; message?: string; reason?: 'missing-file' };
 export type LocalAssetMap = Map<string, File>;

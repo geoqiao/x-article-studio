@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { markdownToContentState } from '@kaitox/x-article';
 import { createPlan } from '../src/plan';
 import { rewriteImageDestinations } from '../src/portable';
+import { simplifyNestedLists } from '../src/normalize';
 
 describe('Markdown to X preparation plan', () => {
   it('keeps tables native while turning Mermaid into an image at its original position', () => {
@@ -47,14 +48,12 @@ describe('Markdown to X preparation plan', () => {
   it.each([
     ['- Parent\n  - Child', 'nested-list'],
     ['<div>Do not lose this</div>', 'html'],
-    ['Before<br>After', 'html'],
     ['- Item\n\n  ```js\n  lost()\n  ```', 'list-block'],
     ['- First paragraph\n\n  Second paragraph', 'list-paragraphs'],
     ['A note[^1]\n\n[^1]: https://example.com', 'footnote'],
     ['> ```mermaid\n> graph LR\n> A-->B\n> ```', 'nested-mermaid'],
     ['- ![Nested](a.png)', 'nested-image'],
     ['[bad](javascript:alert)', 'link'],
-    ['$$x^2$$', 'math'],
   ])('blocks known lossy or unsafe constructs: %s', (body, expected) => {
     const plan = createPlan('# Title\n\n' + body);
     expect(plan.issues.some((i) => i.id === expected && i.severity === 'error')).toBe(true);
@@ -66,11 +65,72 @@ describe('Markdown to X preparation plan', () => {
     expect(plan.issues.filter((i) => i.severity === 'error')).toEqual([]);
   });
 
+  it('warns about unrendered math without blocking preserved text or code', () => {
+    for (const source of ['$$x^2$$', '```latex\nx^2\n```']) {
+      const plan = createPlan(source);
+      expect(plan.markdown).toBe(source);
+      expect(plan.issues.some(i => i.id === 'math' && i.severity === 'warning')).toBe(true);
+      expect(plan.issues.filter(i => i.severity === 'error')).toEqual([]);
+    }
+  });
+
   it('uses explicit title precedence and warns about the unimplemented cover', () => {
     const plan = createPlan('---\ntitle: Metadata title\ncover: cover.png\n---\n# H1\n\nBody.', 'native', 'Chosen title');
     expect(plan.title).toBe('Chosen title');
     expect(plan.markdown).not.toContain('cover:');
     expect(plan.issues.some((i) => i.id === 'cover')).toBe(true);
+  });
+
+  it('accepts body-only documents with editable filename or untitled fallbacks', () => {
+    const imported = createPlan('## Section\n\n正文。', 'native', '', 'notes/DESIGN.md');
+    expect(imported.title).toBe('DESIGN');
+    expect(imported.issues).toEqual([]);
+    expect(markdownToContentState(imported.markdown).contentState.blocks.map(b => b.text)).toEqual(['Section', '正文。']);
+    expect(createPlan('Body only.').title).toBe('Untitled article');
+    expect(createPlan('Body only.', 'native', 'My title', 'DESIGN.md').title).toBe('My title');
+    expect(createPlan('# Heading\n\nBody.', 'native', '', 'DESIGN.md').title).toBe('Heading');
+  });
+
+  it('normalizes simple HTML without changing literal code or reference definitions', () => {
+    const source = '# Title\n\nFirst<br>Second\n\n<!-- private note -->\n\n`<br>`\n\n```html\n<!-- literal -->\n<br>\n```\n\n[Link][ref]\n\n[ref]: https://example.com';
+    const plan = createPlan(source);
+    expect(plan.issues.filter(i => i.severity === 'error')).toEqual([]);
+    expect(plan.markdown).toContain('First  \nSecond');
+    expect(plan.markdown).not.toContain('private note');
+    expect(plan.markdown).toContain('`<br>`');
+    expect(plan.markdown).toContain('<!-- literal -->\n<br>');
+    expect(plan.markdown).toContain('[ref]: https://example.com');
+  });
+
+  it('keeps issue lines tied to the source after HTML normalization and frontmatter', () => {
+    const source = '---\ntitle: Title\n---\n\nFirst<br>Second<br/>Third\n\n<div>Unsupported</div>';
+    expect(createPlan(source).issues.find(i => i.id === 'html')?.line).toBe(7);
+  });
+
+  it('offers an explicit list conversion that keeps every nested item and inline format', () => {
+    const source = '# Title\n\n- Parent **bold**\n  - Child [link](https://example.com)\n    1. Grandchild\n- Last\n\nAfter.';
+    expect(createPlan(source).issues.some(i => i.id === 'nested-list')).toBe(true);
+    const simplified = simplifyNestedLists(source);
+    expect(simplified).toContain('Parent **bold**');
+    expect(simplified).toContain('Child [link](https://example.com)');
+    const plan = createPlan(simplified);
+    expect(plan.issues.filter(i => i.severity === 'error')).toEqual([]);
+    expect(markdownToContentState(plan.markdown).contentState.blocks.map(b => b.text)).toEqual([
+      'Parent bold', 'Child link', 'Grandchild', 'Last', 'After.',
+    ]);
+  });
+
+  it('does not rewrite code examples or complex list blocks when simplifying lists', () => {
+    const source = '# Title\n\n```md\n- Parent\n  - Child\n```\n\n- Parent\n  - Child\n\n  ```js\n  work()\n  ```';
+    expect(simplifyNestedLists(source)).toBe(source);
+  });
+
+  it('preserves frontmatter and link definitions during explicit list conversion', () => {
+    const header = '---\ntitle: Example\ntags:\n  - Parent\n    - Child\n---\n';
+    const result = simplifyNestedLists(header + '\n- Parent\n  - [Child][ref]\n\n[ref]: https://example.com');
+    expect(result.startsWith(header)).toBe(true);
+    expect(result).toContain('[ref]: https://example.com');
+    expect(createPlan(result).issues.filter(i => i.severity === 'error')).toEqual([]);
   });
 
   it('requires body text or an actual media block', () => {

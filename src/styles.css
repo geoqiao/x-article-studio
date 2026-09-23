@@ -193,6 +193,11 @@ svg {
   gap: 5px;
   align-items: center;
 }
+.output-actions .draft-issues-link {
+  color: #8a6225;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .button-primary {
   display: inline-flex;
   align-items: center;
@@ -353,10 +358,45 @@ svg {
   margin: 0 6px;
   flex-shrink: 0;
 }
+.markdown-editor {
+  display: flex;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.line-gutter {
+  position: relative;
+  flex: 0 0 48px;
+  overflow: hidden;
+  background: #f8fafc;
+  border-right: 1px solid var(--line);
+  color: #8b96a6;
+  text-align: right;
+  font: 12px/1.95 "DM Mono", monospace;
+}
+.line-gutter span {
+  display: block;
+  padding: 0 10px 0 3px;
+}
+.line-gutter .highlighted-line {
+  background: #fff0cf;
+  color: #875b0b;
+  box-shadow: inset 3px 0 #e5a63d;
+}
+.line-measure {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  tab-size: 2;
+}
 .source-panel textarea {
   flex: 1;
   min-height: 0;
-  width: 100%;
+  width: 0;
+  min-width: 0;
   padding: 24px 26px;
   resize: none;
   border: 0;
@@ -402,6 +442,52 @@ svg {
   align-items: center;
   gap: 5px;
   margin-left: auto;
+}
+.article-title-field {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.article-title-field label {
+  display: block;
+  font-size: 11px;
+  color: #6e7784;
+  margin-bottom: 5px;
+}
+.article-title-field input {
+  width: 100%;
+  border: 1px solid #d9e1eb;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 15px;
+}
+.article-title-field > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  color: #7e8998;
+  margin-top: 5px;
+}
+.article-title-field button {
+  padding: 2px 0;
+  color: #2368bb;
+  font-size: 10px;
+}
+.blocking-issues {
+  max-height: 180px;
+  overflow: auto;
+}
+.blocking-issue + .blocking-issue {
+  border-top: 1px solid #efdfc6;
+  margin-top: 8px;
+  padding-top: 8px;
+}
+.issue-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
 }
 .preview-controls label {
   display: flex;
@@ -625,7 +711,6 @@ svg {
   border: 1px solid #ead6b4;
   padding: 5px 8px;
   font-size: 11px;
-  margin-left: auto;
 }
 .preview-alert > div {
   flex-basis: 220px;
@@ -1178,6 +1263,7 @@ dialog::backdrop {
   }
   .output-actions {
     width: 100%;
+    flex-wrap: wrap;
     justify-content: flex-end;
     gap: 7px;
   }

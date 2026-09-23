@@ -1,11 +1,17 @@
 import { marked, type Token, type Tokens } from 'marked';
 import { markdownToContentState, parseFrontmatter } from '@kaitox/x-article';
 import type { ArticlePlan, AssetSpec, Issue, TableMode } from './types';
+import { normalizeSimpleHtml } from './normalize';
 
 export const MAX_MARKDOWN_LENGTH = 200_000;
 
-export function createPlan(source: string, tableMode: TableMode = 'native', titleOverride = ''): ArticlePlan {
-  const { fields, body } = parseFrontmatter(source.replace(/\r\n?/g, '\n'));
+export function createPlan(source: string, tableMode: TableMode = 'native', titleOverride = '', documentPath = ''): ArticlePlan {
+  source = source.replace(/\r\n?/g, '\n');
+  const parsed = parseFrontmatter(source);
+  const { fields } = parsed;
+  const normalized = normalizeSimpleHtml(parsed.body);
+  const body = normalized.markdown;
+  const frontmatterLines = source.slice(0, source.length - parsed.body.length).split('\n').length - 1;
   const tokens = marked.lexer(body);
   const issues: Issue[] = [];
   const assets: AssetSpec[] = [];
@@ -20,10 +26,10 @@ export function createPlan(source: string, tableMode: TableMode = 'native', titl
   const imageSources = new Set<string>();
   const scan = (token: Token, line: number, context: string[] = []) => {
     if (token.type === 'html') add('html', 'error', 'Rewrite raw HTML as Markdown; the X converter cannot preserve it.', line);
-    if (context.includes('list') && ['code', 'heading', 'blockquote', 'hr'].includes(token.type)) add('list-block', 'error', 'Move this block out of the list; the converter only preserves text within list items.', line);
+    if (context.includes('list') && ['code', 'heading', 'blockquote', 'hr'].includes(token.type) && !(token.type === 'code' && /^mermaid(?:\s|$)/i.test((token as Tokens.Code).lang || ''))) add('list-block', 'error', 'Move this block out of the list; the converter only preserves text within list items.', line);
     if (token.type === 'list') {
       const list = token as Tokens.List;
-      if (context.includes('list')) add('nested-list', 'error', 'Flatten nested lists first. This importer would lose the nested items.', line);
+      if (context.includes('list')) add('nested-list', 'error', 'Nested list items would be omitted. Convert them to one level before creating the draft.', line);
       if (list.items.some((item) => item.task)) add('task-list', 'warning', 'Task checkboxes become ordinary bullet points.', line);
       if (list.items.some((item) => item.tokens.filter((child) => ['text', 'paragraph'].includes(child.type)).length > 1)) add('list-paragraphs', 'error', 'Use one paragraph per list item; this converter joins multiple paragraphs without preserving their separation.', line);
       for (const item of list.items) for (const child of item.tokens) scan(child, line, [...context, 'list']);
@@ -51,7 +57,7 @@ export function createPlan(source: string, tableMode: TableMode = 'native', titl
       const lang = ((token as Tokens.Code).lang || '').trim().split(/\s/)[0].toLowerCase();
       if (lang !== 'mermaid') nativeMarkdownLength += token.raw.length;
       if (lang === 'mermaid' && context.length) add('nested-mermaid', 'error', 'Move Mermaid out of the list or quote into a standalone code fence.', line);
-      if (lang === 'latex' || lang === 'math') add('math', 'error', 'Math rendering is not implemented in this bridge. X’s official API has a separate LaTeX entity.', line);
+      if (lang === 'latex' || lang === 'math') add('math', 'warning', 'Formulas stay as code. Use an image if you need rendered notation.', line);
       return;
     }
     if (token.type === 'table') {
@@ -61,7 +67,7 @@ export function createPlan(source: string, tableMode: TableMode = 'native', titl
       return;
     }
     if ((token.type === 'text' || token.type === 'link') && /\[\^[^\]]+\]/.test(token.raw)) add('footnote', 'error', 'Footnotes need to be rewritten as ordinary links or endnotes.', line);
-    if (token.type === 'text' && /\$\$|\\\(|\\\[/.test(token.raw)) add('math', 'error', 'Math formulas need manual conversion; this version does not render LaTeX.', line);
+    if (token.type === 'text' && /\$\$|\\\(|\\\[/.test(token.raw)) add('math', 'warning', 'Formulas stay as plain text. Use an image if you need rendered notation.', line);
     if ('tokens' in token && Array.isArray(token.tokens)) for (const child of token.tokens) scan(child, line, [...context, token.type]);
   };
 
@@ -70,7 +76,7 @@ export function createPlan(source: string, tableMode: TableMode = 'native', titl
     // document by joining token.raw: keep the untouched gaps between tokens.
     const found = body.indexOf(token.raw, offset);
     const start = found < 0 ? offset : found;
-    const line = body.slice(0, start).split('\n').length + (source.length - body.length ? source.slice(0, source.length - body.length).split('\n').length - 1 : 0);
+    const line = parsed.body.slice(0, normalized.originalOffset(start)).split('\n').length + frontmatterLines;
     scan(token, line);
     let replacement = token.raw;
     if (token.type === 'code' && (token.lang || '').trim().split(/\s/)[0].toLowerCase() === 'mermaid') {
@@ -95,19 +101,19 @@ export function createPlan(source: string, tableMode: TableMode = 'native', titl
   markdown += body.slice(offset);
   if (fields.cover) add('cover', 'warning', 'Frontmatter cover is not imported in this version. Set the cover in X after creating the draft.', 1);
   const converted = markdownToContentState(markdown);
-  const title = titleOverride.trim() || fields.title?.trim() || converted.title || '';
-  if (!title) add('title', 'error', 'Add an H1 title, frontmatter title, or fill in the title field.', 1);
-  if (title.length > 2_000 || /[\u0000-\u001f\u007f]/.test(title)) add('title-format', 'error', 'Use a single-line title of at most 2,000 characters in this version.', 1);
-  if (source.length > MAX_MARKDOWN_LENGTH) add('length', 'error', 'This version supports Markdown documents up to 200,000 characters.', 1);
-  if (nativeMarkdownLength > 10_000) add('markdown-limit', 'error', 'Code and native-table source exceeds the 10,000-character preflight budget. Shorten it or use table images.', 1);
-  if (assets.length > 40) add('asset-count', 'error', 'This version supports up to 40 prepared assets per article.', 1);
+  const filename = documentPath.split(/[\\/]/).pop()?.replace(/\.(md|markdown|mdown)$/i, '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 2_000);
+  const title = titleOverride.trim() || fields.title?.trim() || converted.title || filename || 'Untitled article';
+  if (title.length > 2_000 || /[\u0000-\u001f\u007f]/.test(title)) add('title-format', 'error', 'Use a single-line title of at most 2,000 characters.', 1);
+  if (source.length > MAX_MARKDOWN_LENGTH) add('length', 'error', 'Split this document into articles of at most 200,000 characters.', 1);
+  if (nativeMarkdownLength > 10_000) add('markdown-limit', 'error', 'Code and tables exceed this app’s 10,000-character limit. Shorten them or switch Tables to PNG images.', 1);
+  if (assets.length > 40) add('asset-count', 'error', 'Split the article or remove images to stay within this app’s 40-image limit (including tables and diagrams).', 1);
   // The downstream converter only supports block-level images. Compare against
   // its actual entities so unusual nested constructions never disappear silently.
   const placeholders = Object.fromEntries(assets.map((a, i) => [a.source, String(i + 1)]));
   const probe = markdownToContentState(markdown, placeholders);
-  if (!body.trim() || probe.contentState.blocks.every((b) => !b.text.trim() && b.type !== 'atomic')) add('body', 'error', 'Add some article body content below the title.', 1);
+  if (!body.trim() || probe.contentState.blocks.every((b) => !b.text.trim() && b.type !== 'atomic')) add('body', 'error', 'Add body text or an image to the article.', 1);
   const resolved = new Set(probe.contentState.entity_map.flatMap((e) => e.value.type === 'MEDIA' ? e.value.data.media_items.map((m) => m.media_id) : []));
-  for (const [i, asset] of assets.entries()) if (!resolved.has(String(i + 1))) add(`unused-${asset.id}`, 'error', `“${asset.label}” cannot be placed here. Move it into a standalone paragraph.`, asset.line);
+  for (const [i, asset] of assets.entries()) if (!resolved.has(String(i + 1)) && !issues.some(issue => issue.id === 'nested-image' && issue.line === asset.line)) add(`unused-${asset.id}`, 'error', `“${asset.label}” cannot be placed here. Move it into a standalone paragraph.`, asset.line);
   const wordCount = (body.match(/[\p{Script=Han}]|[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu) || []).length;
   return { title, markdown, assets, issues, counts, wordCount };
 }

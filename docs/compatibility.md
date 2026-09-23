@@ -1,6 +1,6 @@
 # Markdown → X Article compatibility
 
-Checked: **2026-09-15**. Scope: Article Studio 0.1.0 using `@kaitox/x-article@0.6.0`. “Native” describes the generated X representation, not a successful live-account test.
+Updated: **2026-09-23**. Scope: Article Studio web editor using `@kaitox/x-article@0.6.0`. “Native” describes the generated X representation, not a successful live-account test.
 
 ## The three priorities
 
@@ -20,14 +20,14 @@ No manual screenshots are needed for supported tables or Mermaid. Automatic plac
 | --- | --- | --- |
 | Paragraphs, line breaks | Native | Text in article blocks; spacing controlled by X |
 | `**bold**`, `*italic*`, `~~strike~~` | Native | Inline formatting ranges |
-| First H1 | Native | Article title, removed from body; override available |
+| Title / first H1 | Native | H1 optional. Visible title field overrides metadata → H1 → filename → Untitled article; first H1 is removed from body |
 | H2 and H3 | Native | Two body heading levels |
 | H4–H6 / extra H1 | Limited, warning | Depth clamped / extra H1 remains a body heading |
 | Absolute HTTP(S), mailto links | Native | Link entities; reference definitions preserved |
 | Relative webpage links | Blocked | Convert to absolute URLs first |
 | Single-level ordered/unordered lists | Native | One paragraph per item; exact numbering controlled by X |
 | Multiple paragraphs or other blocks inside list items | Blocked | Move code/quotes/headings out of lists and split paragraphs to prevent content loss |
-| Nested lists | Blocked | Kaitox’s converter does not preserve nested items; flatten before sending |
+| Nested lists | Explicit conversion | Convert to one level retains all simple nested items and inline syntax; complex blocks remain blocked for manual editing |
 | Task lists | Limited, warning | Ordinary bullets; checked state is lost |
 | Blockquotes | Native for simple text | Complex nested content can lose structure; move tables/images/diagrams out |
 | Horizontal rules | Native | Divider entity |
@@ -38,9 +38,10 @@ No manual screenshots are needed for supported tables or Mermaid. Automatic plac
 | Standalone images or images mixed into a normal paragraph | Converted to media blocks | Paragraph is split around media, preserving order |
 | Images inside lists, headings, quotes, links, emphasis, or tables | Blocked | Move into standalone paragraphs |
 | Repeated image source | Supported | One prepared asset/upload per source, each placement retained; different source paths are not deduplicated by bytes |
-| Raw HTML | Blocked | Rewrite HTML, including `<br>`, as Markdown |
+| HTML `<br>` and comments | Normalized | Breaks become Markdown breaks outside tables; comments are omitted; source and code examples are unchanged |
+| Other raw HTML | Blocked | Rewrite as Markdown to prevent dropped content |
 | Footnotes | Blocked | Rewrite as links/endnotes |
-| LaTeX / math fences / display formulas | Not implemented, recognized forms blocked | Official X API supports a LaTeX entity; this private adapter does not map it |
+| LaTeX / math fences / display formulas | Warning | Source is retained as text/code; use an image for rendered notation. Official X API supports LaTeX; this adapter does not map it |
 | Single-dollar inline formulas | Plain text | Not interpreted as math; manually convert if intended as a formula |
 | GIF, SVG, video | Not implemented | Convert to supported body image types, or add separately in X |
 | Cover frontmatter | Warning | Not uploaded by this bridge; select cover in X |

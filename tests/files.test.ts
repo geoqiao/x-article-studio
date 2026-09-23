@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { allowedRemoteUrl, normalizePath, resolveLocalFile, sniffImage } from '../src/files';
+import { describe, expect, it, vi } from 'vitest';
+import { allowedRemoteUrl, fetchImageFile, normalizePath, resolveLocalFile, sniffImage } from '../src/files';
 
 describe('local image resolution', () => {
   it('resolves relative and URI-encoded paths against the selected Markdown folder', () => {
@@ -61,5 +61,20 @@ describe('image input validation', () => {
   });
   it('accepts a public HTTPS image URL', () => {
     expect(allowedRemoteUrl('https://images.example.com/a.png').hostname).toBe('images.example.com');
+  });
+
+  it('offers a recovery action when a download times out', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn((_url, { signal }) => new Promise((_resolve, reject) => {
+      signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    })));
+    try {
+      const request = expect(fetchImageFile('https://images.example.com/a.png')).rejects.toThrow('Image download timed out. Retry or attach a local file.');
+      await vi.advanceTimersByTimeAsync(15_000);
+      await request;
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
   });
 });

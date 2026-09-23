@@ -7,6 +7,9 @@ import { safeFileStem } from './plan';
 import { rewriteImageDestinations } from './portable';
 import type { ArticlePlan, AssetProgress, Issue, LocalAssetMap, PreparedArticle, PreparedAsset } from './types';
 
+type CachedAsset = { input: File | string; blob: Blob; width: number; height: number; sha256: string; base64: string };
+export type AssetCache = Map<string, CachedAsset>;
+
 export function safePreview(plan: ArticlePlan, assets: PreparedAsset[] = []): string {
   const urls = new Map(assets.map((a) => [a.spec.source, a.url]));
   const placements: string[] = [];
@@ -17,7 +20,7 @@ export function safePreview(plan: ArticlePlan, assets: PreparedAsset[] = []): st
       const asset = plan.assets.find((item) => item.source === source);
       return `<figure class="xp-fig"${asset ? ` data-asset-id="${asset.id}"` : ''}>`;
     })
-    .replaceAll('图片加载中…', 'Waiting for this image. Choose its file below, or match the image folder.')
+    .replaceAll('图片加载中…', 'Image not ready. Choose a file below or check the image details.')
     .replaceAll('（正文为空）', 'Your article preview will appear here.');
   // Sanitize third-party renderer output even when it currently escapes content.
   // Local-file previews have opaque origins and create blob:null/... URLs.
@@ -33,41 +36,58 @@ async function imageDimensions(blob: Blob): Promise<{ width: number; height: num
   return { width, height };
 }
 
-export async function prepareArticle(plan: ArticlePlan, files: LocalAssetMap, documentPath: string, onProgress: (p: AssetProgress) => void, signal: AbortSignal): Promise<PreparedArticle> {
+export async function prepareArticle(plan: ArticlePlan, files: LocalAssetMap, documentPath: string, onProgress: (p: AssetProgress) => void, signal: AbortSignal, cache: AssetCache = new Map()): Promise<PreparedArticle> {
   const issues: Issue[] = [...plan.issues];
   const assets: PreparedAsset[] = [];
+  const bundleAssets: PreparedArticle['bundle']['assets'] = [];
+  const sources = plan.assets.filter(asset => asset.kind === 'image').map(asset => asset.source);
+  for (const key of cache.keys()) if (!plan.assets.some(asset => asset.source === key)) cache.delete(key);
   let total = 0;
   for (const spec of plan.assets) {
     if (signal.aborted) { disposeAssets(assets); throw new DOMException('Preparation cancelled.', 'AbortError'); }
     onProgress({ id: spec.id, state: 'preparing' });
+    let reason: AssetProgress['reason'];
     try {
-      let blob: Blob;
-      if (spec.kind === 'mermaid') blob = await renderDiagram(spec.code || '');
-      else if (spec.kind === 'table') blob = await renderTable(spec.headers || [], spec.rows || []);
-      else {
-        const file = resolveLocalFile(spec.source, files, documentPath, plan.assets.filter((asset) => asset.kind === 'image').map((asset) => asset.source));
-        if (file) blob = file;
+      const file = spec.kind === 'image' ? resolveLocalFile(spec.source, files, documentPath, sources) : undefined;
+      const input = spec.kind === 'mermaid' ? `mermaid:${spec.code}`
+        : spec.kind === 'table' ? `table:${JSON.stringify([spec.headers, spec.rows])}`
+        : file || spec.source;
+      let cached = cache.get(spec.source);
+      if (cached?.input !== input) {
+        cache.delete(spec.source);
+        let blob: Blob;
+        if (spec.kind === 'mermaid') blob = await renderDiagram(spec.code || '');
+        else if (spec.kind === 'table') blob = await renderTable(spec.headers || [], spec.rows || []);
+        else if (file) blob = file;
         else if (/^https?:\/\//i.test(spec.source)) blob = await fetchImageFile(spec.source, signal);
-        else throw new Error('This image file has not been selected. Choose its file, or use Match image folder to attach the article’s images together.');
+        else {
+          reason = 'missing-file';
+          throw new Error('Image file not selected. Choose the file or match its folder.');
+        }
+        const mime = await sniffImage(blob);
+        blob = new Blob([blob], { type: mime });
+        const dimensions = await imageDimensions(blob);
+        cached = { input, blob, ...dimensions, sha256: await sha256(blob), base64: await toBase64(blob) };
+        if (signal.aborted) throw new DOMException('Preparation cancelled.', 'AbortError');
+        cache.set(spec.source, cached);
       }
-      const mime = await sniffImage(blob);
-      blob = new Blob([blob], { type: mime });
-      const dimensions = await imageDimensions(blob);
+      const { blob, width, height, sha256: hash, base64 } = cached;
+      if (total + blob.size > MAX_TOTAL_BYTES) throw new Error('Images exceed 20 MiB in total. Resize or remove an image.');
       total += blob.size;
-      if (total > MAX_TOTAL_BYTES) throw new Error('The article exceeds the 20 MiB total asset limit. Resize some images.');
-      const hash = await sha256(blob);
+      const mime = blob.type;
       const ext = mime === 'image/jpeg' ? 'jpg' : mime.split('/')[1];
-      assets.push({ spec, blob, url: URL.createObjectURL(blob), ...dimensions, fileName: `${spec.id}-${hash.slice(0, 8)}.${ext}`, sha256: hash });
-      if (dimensions.width > 2400 || dimensions.height > 5000) issues.push({ id: `readability-${spec.id}`, severity: 'warning', message: `Check “${spec.label}” at phone width; large images can make labels hard to read.`, line: spec.line });
+      const fileName = `${spec.id}-${hash.slice(0, 8)}.${ext}`;
+      assets.push({ spec, blob, url: URL.createObjectURL(blob), width, height, fileName, sha256: hash });
+      bundleAssets.push({ source: spec.source, fileName, mime, base64, sha256: hash });
+      if (width > 2400 || height > 5000) issues.push({ id: `readability-${spec.id}`, severity: 'warning', message: `Check “${spec.label}” at phone width; large images can make labels hard to read.`, line: spec.line });
       onProgress({ id: spec.id, state: 'ready' });
     } catch (error) {
       if (signal.aborted) { disposeAssets(assets); throw new DOMException('Preparation cancelled.', 'AbortError'); }
       const message = error instanceof Error ? error.message : 'Asset preparation failed.';
       issues.push({ id: `prepare-${spec.id}`, severity: 'error', message, line: spec.line });
-      onProgress({ id: spec.id, state: 'error', message });
+      onProgress({ id: spec.id, state: 'error', message, reason });
     }
   }
-  const bundleAssets = await Promise.all(assets.map(async (a) => ({ source: a.spec.source, fileName: a.fileName, mime: a.blob.type, base64: await toBase64(a.blob), sha256: a.sha256 })));
   if (signal.aborted) { disposeAssets(assets); throw new DOMException('Preparation cancelled.', 'AbortError'); }
   return { plan, assets, issues, previewHtml: safePreview(plan, assets), bundle: { schemaVersion: 1, jobId: crypto.randomUUID(), title: plan.title, markdown: plan.markdown, assets: bundleAssets, createdAt: new Date().toISOString() } };
 }
