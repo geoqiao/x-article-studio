@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Add Mermaid Diagrams to X Articles | Article Studio</title><meta name="description" content="Turn Mermaid code blocks into PNG images for X Articles in your browser. No screenshots: diagrams are rendered, uploaded and placed in your draft."><link rel="canonical" href="https://md2xarticle.com/mermaid-diagrams-x-articles"><meta property="og:type" content="article"><meta property="og:site_name" content="Article Studio"><meta property="og:title" content="Add Mermaid Diagrams to X Articles"><meta property="og:description" content="Render Mermaid code blocks as PNG images and place them in an X Article draft, without screenshots."><meta property="og:url" content="https://md2xarticle.com/mermaid-diagrams-x-articles"><meta property="og:image" content="https://md2xarticle.com/og/article-studio.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="Article Studio: Markdown to X Articles"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Add Mermaid Diagrams to X Articles"><meta name="twitter:description" content="Render Mermaid code blocks as PNG images and place them in an X Article draft, without screenshots."><meta name="twitter:image" content="https://md2xarticle.com/og/article-studio.png"><meta name="twitter:image:alt" content="Article Studio: Markdown to X Articles"><link rel="icon" href="/logo.svg"><link rel="stylesheet" href="/info.css"></head>
+<body><main><a class="brand" href="/"><img src="/logo.svg" alt="" width="36" height="36">Article Studio</a><h1>Add Mermaid diagrams to X Articles</h1>
+<p>X Articles cannot render Mermaid code, so a flowchart pasted as text shows up as a code block. Article Studio renders each Mermaid block to a PNG image in your browser and puts it back in the same place in the article. You do not need to take screenshots.</p>
+<h2>Steps</h2>
+<ol><li>In <a href="/">Article Studio</a>, write a fenced code block with the language <code>mermaid</code>, or insert one from the editor toolbar. Imported Markdown files work the same way.</li>
+<li>The preview shows the rendered diagram. Check that labels are readable, including in the phone preview.</li>
+<li>With the <a href="https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh">Chrome companion</a>, choose <strong>Create X draft</strong>. The diagram is uploaded as an image and placed where the code block was.</li>
+<li>Without the companion, download the diagrams from <strong>Images &amp; diagrams → Download all (.zip)</strong> and add them in X where the image markers show.</li></ol>
+<h2>Example</h2>
+<pre><code>```mermaid
+flowchart LR
+  Draft[Write in Markdown] --> Preview[Preview]
+  Preview --> X[Create X draft]
+```</code></pre>
+<h2>How the images are made</h2>
+<ul><li>Diagrams are rendered with Mermaid 11 on a white background at 2× resolution, capped at 1,600 pixels wide.</li>
+<li>The result is a static image. Links, tooltips and click actions inside the diagram do not carry over.</li>
+<li>Rendering happens in your browser. The diagram source is not sent to a rendering service.</li></ul>
+<h2>Limits</h2>
+<ul><li>A diagram must be its own code block. Mermaid inside lists, quotes or other code blocks is blocked, as are diagrams Mermaid cannot parse. The preview points to the line to fix.</li>
+<li>Each diagram counts toward the 40-image limit per draft, together with photos and PNG tables.</li>
+<li>Wide diagrams are scaled down to fit. Very dense charts can be hard to read on phones; split them or use a top-to-bottom layout such as <code>flowchart TD</code>.</li></ul>
+<h2>Related guides</h2><ul><li><a href="/x-article-tables">Add a table to an X Article</a></li><li><a href="/markdown-images-x-articles">Markdown images in X Articles</a></li><li><a href="/support">Full Markdown to X Articles guide</a></li></ul>
+<p class="date">Article Studio is an independent tool and is not affiliated with or endorsed by X Corp. X controls Articles access and final rendering; check each draft in X before publishing.</p>
+<footer><a href="/">Open Article Studio</a><a href="/support">Guide</a><a href="/privacy">Privacy policy</a></footer></main></body></html>

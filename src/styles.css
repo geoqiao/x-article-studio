@@ -19,13 +19,14 @@
 body {
   margin: 0;
 }
-.website {
+/* The editor fills the first screen; the crawlable guide follows below it. */
+.website-app {
   display: flex;
   flex-direction: column;
   height: 100dvh;
   min-height: 700px;
 }
-.website #root {
+.website-app #root {
   flex: 1;
   min-height: 0;
 }
@@ -67,6 +68,40 @@ body {
 }
 .product-intro a {
   white-space: nowrap;
+}
+.product-guide {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 48px 22px 64px;
+  color: #35414c;
+  font-size: 15px;
+  line-height: 1.7;
+}
+.product-guide h2 {
+  margin: 36px 0 10px;
+  color: #18202b;
+  font-size: 22px;
+  letter-spacing: -0.3px;
+}
+.product-guide h2:first-child {
+  margin-top: 0;
+}
+.product-guide h3 {
+  margin: 20px 0 4px;
+  color: #18202b;
+  font-size: 16px;
+}
+.product-guide p {
+  margin: 0 0 12px;
+}
+.product-guide li {
+  margin-bottom: 10px;
+}
+.product-guide code {
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #f2f5f7;
+  font-size: 0.9em;
 }
 .no-script {
   margin: 0;
@@ -1209,8 +1244,11 @@ dialog::backdrop {
   }
 }
 @media (max-width: 760px) {
-  .website {
+  .website-app {
     min-height: 760px;
+  }
+  .product-guide {
+    padding: 36px 16px 48px;
   }
   .product-intro {
     align-items: flex-start;
