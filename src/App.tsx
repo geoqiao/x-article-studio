@@ -1373,8 +1373,10 @@ export default function App() {
                 </>
               )}
               <p className="muted-note">
-                Live X upload and rendering are still unverified for this
-                prototype. The companion creates drafts; it does not publish.
+                Draft creation has been confirmed in a real X account. X
+                controls final rendering and may change its editor, so review
+                each draft there. The companion creates drafts; it does not
+                publish.
               </p>
             </>
           )}
@@ -1417,8 +1419,9 @@ export default function App() {
               <details className="help-details">
                 <summary>Testing and current limitations</summary>
                 <p>
-                  Core conversion and browser workflows have been tested. Actual
-                  X uploads and rendering, every Markdown/Mermaid combination,
+                  Core conversion and browser workflows have been tested, and
+                  draft creation has been confirmed in a real X account. Final X
+                  rendering of every format, every Markdown/Mermaid combination,
                   and other browser families remain unverified.
                 </p>
                 <p>

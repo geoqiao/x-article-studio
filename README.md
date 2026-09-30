@@ -6,7 +6,7 @@ Live app: <https://md2xarticle.com> · Private repository: <https://github.com/g
 
 A Markdown-to-X-Articles web app inspired by MD2X’s editing workflow and built on Kaitox’s MIT-licensed article converter. It prepares ordinary images, renders Mermaid to PNG, preserves native tables (or renders them to PNG), and passes a complete document to a small Chromium companion.
 
-**The local editor and exports work. The companion is implemented, but creating and rendering a draft in a real X account has not been verified.** X’s private editor interfaces and account access remain the live integration boundary.
+**The local editor, exports and companion work. Draft creation in a real X account was confirmed by the owner on 2026-10-01.** Final rendering of every format remains under X's control. X’s private editor interfaces and account access remain the live integration boundary.
 
 ## Run locally
 
@@ -44,7 +44,7 @@ Open [article-studio-preview.html](article-studio-preview.html) directly in a Ch
 
 To regenerate it after a source change, run `pnpm build:html`. The generated HTML is ignored by Git. Remote images still need network access and CORS permission. Browser policies determine whether drafts persist from local files; ZIP export provides a portable backup. X handoff is available through the full app and companion, not the standalone file.
 
-Test-coverage notes are under **How to use**. Main browser workflows were tested in Chrome, including offline rendering; live X behavior and exhaustive format/browser coverage remain unverified.
+Test-coverage notes are under **How to use**. Main browser workflows were tested in Chrome, including offline rendering; draft creation in a real X account was confirmed on 2026-10-01; exhaustive format/browser coverage and X's final rendering of each format remain unverified.
 
 ## Connect the companion
 

@@ -1,6 +1,6 @@
 # Markdown → X Article compatibility
 
-Updated: **2026-09-23**. Scope: Article Studio web editor using `@kaitox/x-article@0.6.0`. “Native” describes the generated X representation, not a successful live-account test.
+Updated: **2026-10-01**. Scope: Article Studio web editor using `@kaitox/x-article@0.6.0`. “Native” describes the generated X representation, not a successful live-account test.
 
 ## The three priorities
 
@@ -70,4 +70,4 @@ The official schema also documents `latex`, with TeX stored in the block’s tex
 4. [Kaitox Mermaid renderer](https://github.com/kuangjiajia/kaitox-toolkit/blob/add87b9237ee9d77e1f757515e120e3db9c96452/packages/x-article/src/mermaidRender.ts), inspected 2026-09-15; actual PNG pixels verified in Chromium.
 5. [MD2X README at the inspected revision](https://github.com/echoVic/x-article-md/blob/81e42e2d86d0e4aef7c855946bb7536e2c42cda7/README.md), retrieved 2026-09-13: separate asset insertion from its X Assets panel. Its [image renderer](https://github.com/echoVic/x-article-md/blob/81e42e2d86d0e4aef7c855946bb7536e2c42cda7/lib/image-copy.ts) already generates table/Mermaid PNGs; copying them remains separate from uploading media to X.
 
-Live X draft creation, account entitlement, native table rendering, current private query IDs, and published/mobile X output remain unverified.
+Update 2026-10-01: the owner confirmed draft creation in a real X account. Articles entitlement for other accounts, native table rendering, the long-term stability of X's private query IDs, and published/mobile X output have not been separately documented.
