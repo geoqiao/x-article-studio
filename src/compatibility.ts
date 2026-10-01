@@ -3,7 +3,7 @@ export type FormatSupport = { syntax: string; status: 'Native' | 'Converted' | '
 export const FORMATS: FormatSupport[] = [
   { syntax: 'PNG / JPEG / WebP images', status: 'Converted', result: 'Uploaded as native X media', note: 'Attach a folder once, or replace an individual source. Up to 5 MiB per image and 20 MiB total in this version. Missing images block the handoff.' },
   { syntax: 'Remote image URLs', status: 'Limited', result: 'Downloaded, then uploaded', note: 'Public servers must allow browser downloads (CORS). For blocked, redirected, or private URLs, download and attach the file. No login cookies are sent to image hosts.' },
-  { syntax: 'Markdown tables', status: 'Native', result: 'Native Markdown table block', note: 'Keeps the table source. Plain HTML copy/paste does not guarantee this result: the bridge inserts an X Markdown entity.' },
+  { syntax: 'Markdown tables', status: 'Native', result: 'Native Markdown table block', note: 'Keeps the table source. Only the bridge can insert the X Markdown table entity; Copy body pastes each row as a list item instead.' },
   { syntax: 'Tables as PNG', status: 'Converted', result: 'Rendered and uploaded automatically', note: 'Optional consistent image layout. Text, links, and cells stop being selectable in X. Wide/long tables need splitting.' },
   { syntax: 'Mermaid diagrams', status: 'Converted', result: 'SVG → PNG → native X media', note: 'Standalone Mermaid fences render locally. The result in X is static. Nested fences and syntax errors block preparation.' },
   { syntax: 'Paragraphs, bold, italic, strikethrough', status: 'Native', result: 'Native text and formatting', note: 'The preview uses the same Kaitox content conversion as the bridge. X still controls typography and spacing.' },

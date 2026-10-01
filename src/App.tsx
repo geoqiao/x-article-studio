@@ -545,10 +545,14 @@ export default function App() {
     try {
       await copyArticleBody(body);
       setCopied("body");
+      const nativeTables = tableMode === "native" && plan.counts.tables > 0;
       setNotice(
-        plan.assets.length
+        (plan.assets.length
           ? "Formatted body copied. Paste into X Articles, then add the images from the Images panel."
-          : "Formatted body copied. Paste it into the X Articles body field.",
+          : "Formatted body copied. Paste it into the X Articles body field.") +
+          (nativeTables
+            ? " X cannot paste tables, so each row was copied as a list item; use Create X draft for native tables."
+            : ""),
       );
     } catch {
       setManualCopy({ kind: "body", ...body });

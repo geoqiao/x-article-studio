@@ -40,11 +40,13 @@ async page => {
   assert(body.html.includes('<strong>bold text</strong>') && body.html.includes('<em>emphasis</em>') && body.html.includes('<s>removed</s>'), 'Emphasis was lost');
   assert(body.html.includes('<a href="https://example.com/read">Visit</a>'), 'Link lost its destination');
   assert(body.html.includes('<ul>') && body.html.includes('<ol>') && body.html.includes('<blockquote>'), 'Lists or quote lost their block types');
-  assert(body.html.includes('<table>') && body.html.includes('<pre><code>'), 'Table or code was copied as source');
-  results.push({ richBody: 'body-only HTML has X heading levels, emphasis, links, lists, quote, table, and code' });
+  assert(body.html.includes('<pre><code>'), 'Code was copied as source');
+  // X's paste handler flattens <table> into one run of cell text, so rows travel as list items.
+  assert(!body.html.includes('<table') && body.html.includes('<li><strong><strong>Speed</strong></strong> — Value: Fast</li>'), 'Table rows were not copied as list items');
+  results.push({ richBody: 'body-only HTML has X heading levels, emphasis, links, lists, quote, table rows as a list, and code' });
   assert(!/title:|# Section|\*\*bold text\*\*|\[Visit\]|```|\| Name \|/.test(body.text), 'Plain clipboard contains Markdown syntax');
   assert(body.text.includes('• Second bullet 中文 🚀') && body.text.includes('2. Second step'), 'Plain clipboard lost list markers or Unicode');
-  assert(body.text.includes('Visit (https://example.com/read)') && body.text.includes('Name\tValue'), 'Readable fallback lost links or table cells');
+  assert(body.text.includes('Visit (https://example.com/read)') && body.text.includes('• Speed — Value: Fast'), 'Readable fallback lost links or table cells');
   assert(body.text.includes('const literal = "**keep this code**";\nconsole.log(literal);'), 'Literal code was incorrectly stripped');
   results.push({ readableText: 'plain-text receivers get readable prose and list markers; literal code remains intact' });
 
@@ -63,7 +65,7 @@ async page => {
   assert(await pasted.locator('h1').innerText() === 'Section heading', 'Real paste lost Heading');
   assert(await pasted.locator('h2').innerText() === 'Detail heading', 'Real paste lost Subheading');
   assert(await pasted.locator('a[href="https://example.com/read"]').count() === 1, 'Real paste lost link');
-  assert(await pasted.locator('ul li').count() === 2 && await pasted.locator('ol li').count() === 2, 'Real paste lost lists');
+  assert(await pasted.locator('ul li').count() === 3 && await pasted.locator('ol li').count() === 2, 'Real paste lost lists');
   const bold = await pasted.getByText('bold text', { exact: true }).evaluate(el => getComputedStyle(el).fontWeight);
   assert(Number(bold) >= 600 || bold === 'bold', 'Real paste lost bold styling');
   await pasted.evaluate(el => el.remove());

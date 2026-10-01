@@ -40,6 +40,10 @@ export function createArticleClipboard(article: Pick<PreparedArticle, 'plan' | '
         element.removeAttribute(attribute.name);
     }
   }
+  // X's paste handler has no table block: a pasted <table> collapses into one
+  // run of cell text. Native tables only exist through the companion bridge, so
+  // here each row becomes a list item that still reads correctly after pasting.
+  for (const table of body.querySelectorAll("table")) table.replaceWith(tableAsList(table));
   for (const pre of body.querySelectorAll("pre")) {
     const code = document.createElement("code");
     code.append(...pre.childNodes);
@@ -49,6 +53,28 @@ export function createArticleClipboard(article: Pick<PreparedArticle, 'plan' | '
     html: body.innerHTML,
     text: [...body.childNodes].map(blockText).filter(Boolean).join("\n\n"),
   };
+}
+
+function tableAsList(table: Element): HTMLUListElement {
+  const rows = [...table.querySelectorAll("tr")].map((row) => [...row.children]);
+  const hasHeader = rows[0]?.some((cell) => cell.tagName === "TH");
+  const labels = hasHeader ? rows[0].map((cell) => cell.textContent?.trim() || "") : [];
+  const list = document.createElement("ul");
+  for (const cells of hasHeader ? rows.slice(1) : rows) {
+    const item = document.createElement("li");
+    cells.forEach((cell, index) => {
+      if (index === 0) {
+        const lead = document.createElement("strong");
+        lead.append(...cell.childNodes);
+        item.append(lead);
+        return;
+      }
+      if (!cell.textContent?.trim()) return;
+      item.append(index === 1 ? " — " : "; ", labels[index] ? `${labels[index]}: ` : "", ...cell.childNodes);
+    });
+    list.append(item);
+  }
+  return list;
 }
 
 function inlineText(node: Node): string {
@@ -68,11 +94,6 @@ function blockText(node: Node): string {
   if (node.matches("ul, ol")) {
     return [...node.children].map((item, index) =>
       `${node.tagName === "OL" ? `${index + 1}.` : "•"} ${inlineText(item)}`,
-    ).join("\n");
-  }
-  if (node.tagName === "TABLE") {
-    return [...node.querySelectorAll("tr")].map((row) =>
-      [...row.children].map(inlineText).join("\t"),
     ).join("\n");
   }
   if (node.tagName === "HR") return "—";
