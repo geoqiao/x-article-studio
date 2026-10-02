@@ -2,6 +2,7 @@ import {
   BRIDGE_PROTOCOL,
   BRIDGE_PROTOCOL_VERSION,
   DEFAULT_ARTICLE_STUDIO_ORIGINS,
+  isBridgeAction,
   type BridgeRequestMessage,
   type BridgeResponseMessage,
 } from '../../src/bridge.js';
@@ -24,7 +25,7 @@ function isRequestMessage(value: unknown): value is BridgeRequestMessage {
     message.type === 'request' &&
     typeof message.requestId === 'string' &&
     message.requestId.length > 0 &&
-    (message.action === 'status' || message.action === 'stage')
+    isBridgeAction(message.action)
   );
 }
 

@@ -12,6 +12,10 @@ The listing uses the website's logo, two screenshots, and the small promotional 
 
 The description below includes automatic X Articles tab opening in 0.1.1, the September 19 clarification separating extension privacy from website statistics, and canonical support/privacy URLs. The 0.1.1 package, description, support/privacy URLs, permission explanation and reviewer instructions were saved and submitted on September 19. The dashboard confirmed **This draft is pending review**. Approval and public rollout remain controlled by Google.
 
+## 0.1.2 (built, not submitted)
+
+Adds cover images, error classification for the create request, a job-status reply to the website, and the opt-in **Create drafts without this review** setting. Before submitting, update the description, single purpose, `scripting` justification and reviewer instructions below: they state that nothing is uploaded before confirmation on the review page, which no longer holds once a user enables that setting. The privacy page already describes it.
+
 ## Description
 
 Create X Article drafts from Markdown, with your images in place.

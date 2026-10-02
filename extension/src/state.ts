@@ -15,6 +15,11 @@ export interface JobRecord {
   createdAt: string;
   updatedAt: string;
   error?: string;
+  /** Machine-readable reason for a definite failure, such as X_FIREWALL_BLOCKED. */
+  errorCode?: string;
+  /** A completed draft that still needs attention, such as a cover X did not accept. */
+  warning?: string;
+  hasCover?: boolean;
   retryable: boolean;
   attemptId?: string;
   attemptStartedAt?: string;
@@ -45,11 +50,12 @@ export function bundleFingerprint(bundle: DraftBundle): string {
   const assetPart = bundle.assets
     .map((asset) => `${asset.source}\u0000${asset.fileName}\u0000${asset.mime}\u0000${asset.sha256}`)
     .join('\u0001');
-  return [bundle.schemaVersion, bundle.jobId, bundle.title, bundle.createdAt, bundle.markdown.length, shortHash(bundle.markdown), assetPart].join('\u0002');
+  return [bundle.schemaVersion, bundle.jobId, bundle.title, bundle.createdAt, bundle.markdown.length, shortHash(bundle.markdown), assetPart, bundle.cover?.sha256 ?? ''].join('\u0002');
 }
 
 export function bundleByteCount(bundle: DraftBundle): number {
-  return bundle.assets.reduce((total, asset) => total + (decodedBase64ByteLength(asset.base64) ?? 0), 0);
+  const assets = bundle.cover ? [...bundle.assets, bundle.cover] : bundle.assets;
+  return assets.reduce((total, asset) => total + (decodedBase64ByteLength(asset.base64) ?? 0), 0);
 }
 
 export function makeJobRecord(bundle: DraftBundle, now = new Date().toISOString()): JobRecord {
@@ -60,6 +66,7 @@ export function makeJobRecord(bundle: DraftBundle, now = new Date().toISOString(
     bundle,
     fingerprint: bundleFingerprint(bundle),
     imageCount: bundle.assets.length,
+    hasCover: Boolean(bundle.cover),
     totalBytes: bundleByteCount(bundle),
     createdAt: bundle.createdAt,
     updatedAt: now,
@@ -96,6 +103,7 @@ export function claimJobState(job: JobRecord, attemptId: string, now = new Date(
       status: 'creating',
       updatedAt: now,
       error: undefined,
+      errorCode: undefined,
       retryable: false,
       attemptId,
       attemptStartedAt: now,
@@ -113,7 +121,7 @@ export function markUploading(job: JobRecord, done: number, now = new Date().toI
   };
 }
 
-export function completeJob(job: JobRecord, restId: string, draftUrl: string, now = new Date().toISOString()): JobRecord {
+export function completeJob(job: JobRecord, restId: string, draftUrl: string, warning?: string, now = new Date().toISOString()): JobRecord {
   return {
     ...job,
     status: 'completed',
@@ -121,6 +129,8 @@ export function completeJob(job: JobRecord, restId: string, draftUrl: string, no
     // Completed jobs retain only their result metadata. Pending content is deleted here.
     bundle: undefined,
     error: undefined,
+    errorCode: undefined,
+    warning,
     retryable: false,
     attemptId: undefined,
     attemptStartedAt: undefined,
@@ -130,12 +140,13 @@ export function completeJob(job: JobRecord, restId: string, draftUrl: string, no
   };
 }
 
-export function failJob(job: JobRecord, error: string, retryable: boolean, now = new Date().toISOString()): JobRecord {
+export function failJob(job: JobRecord, error: string, retryable: boolean, errorCode?: string, now = new Date().toISOString()): JobRecord {
   return {
     ...job,
     status: 'failed',
     updatedAt: now,
     error,
+    errorCode,
     retryable,
     attemptId: undefined,
     attemptStartedAt: undefined,
@@ -148,6 +159,7 @@ export function markUncertain(job: JobRecord, error: string, now = new Date().to
     status: 'uncertain',
     updatedAt: now,
     error,
+    errorCode: undefined,
     retryable: false,
     attemptId: undefined,
     attemptStartedAt: undefined,

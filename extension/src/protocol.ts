@@ -14,13 +14,24 @@ export type ExtensionRequest =
   | { type: 'article-studio-review-get'; jobId: string }
   | { type: 'article-studio-review-create'; jobId: string }
   | { type: 'article-studio-review-arm-retry'; jobId: string }
-  | { type: 'article-studio-review-discard'; jobId: string };
+  | { type: 'article-studio-review-discard'; jobId: string }
+  | { type: 'article-studio-settings-get' }
+  | { type: 'article-studio-settings-set'; autoCreate: boolean };
 
-export type RunnerFailurePhase = 'preflight' | 'assets' | 'create';
+/**
+ * 'rejected' means X answered the create request with a definite refusal, so no
+ * draft exists. 'create' means the outcome is unknown and X must be checked.
+ */
+export type RunnerFailurePhase = 'preflight' | 'assets' | 'rejected' | 'create';
 
 export type RunnerResult =
-  | { ok: true; restId: string }
+  | { ok: true; restId: string; warning?: string }
   | { ok: false; phase: RunnerFailurePhase; code: string; message: string };
+
+export interface CompanionSettings {
+  /** Create a draft as soon as the website stages it, without the review click. */
+  autoCreate: boolean;
+}
 
 export interface ReviewJobView {
   jobId: string;
@@ -31,6 +42,9 @@ export interface ReviewJobView {
   createdAt: string;
   updatedAt: string;
   error?: string;
+  errorCode?: string;
+  warning?: string;
+  hasCover: boolean;
   retryable: boolean;
   restId?: string;
   draftUrl?: string;
@@ -38,7 +52,7 @@ export interface ReviewJobView {
 }
 
 export type ReviewResponse =
-  | { ok: true; job?: ReviewJobView; result?: { reviewOpened: boolean; jobId: string } }
+  | { ok: true; job?: ReviewJobView; settings?: CompanionSettings; result?: { reviewOpened: boolean; jobId: string } }
   | { ok: false; error: { code: string; message: string } };
 
 export interface StoredBundleRecord {

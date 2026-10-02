@@ -99,7 +99,8 @@ export function createPlan(source: string, tableMode: TableMode = 'native', titl
     offset = start + token.raw.length;
   }
   markdown += body.slice(offset);
-  if (fields.cover) add('cover', 'warning', 'Frontmatter cover is not imported in this version. Set the cover in X after creating the draft.', 1);
+  const coverLine = fields.cover ? source.split('\n').slice(0, frontmatterLines).findIndex((text) => /^cover\s*:/.test(text)) + 1 : 0;
+  const cover = fields.cover ? { source: fields.cover, line: coverLine || 1 } : undefined;
   const converted = markdownToContentState(markdown);
   const filename = documentPath.split(/[\\/]/).pop()?.replace(/\.(md|markdown|mdown)$/i, '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 2_000);
   const title = titleOverride.trim() || fields.title?.trim() || converted.title || filename || 'Untitled article';
@@ -115,7 +116,19 @@ export function createPlan(source: string, tableMode: TableMode = 'native', titl
   const resolved = new Set(probe.contentState.entity_map.flatMap((e) => e.value.type === 'MEDIA' ? e.value.data.media_items.map((m) => m.media_id) : []));
   for (const [i, asset] of assets.entries()) if (!resolved.has(String(i + 1)) && !issues.some(issue => issue.id === 'nested-image' && issue.line === asset.line)) add(`unused-${asset.id}`, 'error', `“${asset.label}” cannot be placed here. Move it into a standalone paragraph.`, asset.line);
   const wordCount = (body.match(/[\p{Script=Han}]|[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu) || []).length;
-  return { title, markdown, assets, issues, counts, wordCount };
+  return { title, markdown, assets, issues, counts, wordCount, cover };
+}
+
+/**
+ * Lines with a command piped into a shell, the one pattern seen to make X's
+ * firewall refuse an article. Used to point at likely causes after such a refusal.
+ */
+export function shellPipeLines(source: string, limit = 5): number[] {
+  const lines: number[] = [];
+  source.split(/\r\n?|\n/).forEach((text, index) => {
+    if (lines.length < limit && /\|\s*(?:sudo\s+)?(?:ba|z|da|fi|k)?sh\b/.test(text)) lines.push(index + 1);
+  });
+  return lines;
 }
 
 export function safeFileStem(title: string): string {

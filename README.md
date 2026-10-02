@@ -26,7 +26,7 @@ Open <http://127.0.0.1:4318>. No backend, API key, paid image generator, or rela
 2. The preview updates automatically, including Mermaid and attached images. Add pictures through **Images**, or paste/drop them into the editor. For local Markdown (including Obsidian), use **Match image folder** once: choose the image folder or its parent. Only referenced images are attached; the Markdown stays unchanged. Individual files also match longer relative paths when their filenames are unambiguous.
 3. Use the **Tables** selector above the preview to keep native tables or render PNGs. The **Table** and **Diagram** toolbar buttons insert examples at the cursor.
 4. **Copy title** copies the separate title. **Copy body** copies formatted rich text with X's two heading levels, emphasis, links, lists, and quotes. Use regular Paste in the X Articles body field. Plain-text applications receive readable prose, with list markers and link destinations. If clipboard permissions are blocked, selection copying is tried automatically; the final fallback lets you select and copy the formatted body. Copy individual PNGs from **Images** at the image markers; clipboard pasting does not automatically upload images. X has no pasteable table block, so Copy body sends each native-table row as a list item (first cell in bold, the other cells labeled by their column header); native tables require **Create X draft**.
-5. **Create X draft** uses the companion to upload and place all images automatically. It first opens the companion’s review; confirmation there starts the X write. Publishing remains separate.
+5. **Create X draft** uses the companion to upload and place all images automatically. It first opens the companion’s review; confirmation there starts the X write. Companion 0.1.2 adds an opt-in setting on that review to create drafts without it; progress and the draft link then appear under the toolbar. A cover comes from frontmatter `cover:` or **Images → Cover**. Publishing remains separate.
 
 All blocking issues appear together above the preview, with repair actions and links to the editor's line numbers. A line link selects the affected source block and highlights its gutter number, including on phones. Simple nested lists offer **Convert to one level**, preserving all items for review. There is no manual preparation step.
 
@@ -56,9 +56,13 @@ Companion 0.1.1 automatically reuses or opens <https://x.com/compose/articles> a
 
 The default development build accepts `http://127.0.0.1:4318` and `http://localhost:4318`. Production builds also accept `https://md2xarticle.com`. These are separate browser storage origins; drafts and attachments do not automatically move between them.
 
-The web page can stage a bundle and query connection status. Draft creation requires the extension’s review action. Images upload sequentially; their returned media IDs are inserted at the corresponding document positions. Any image failure prevents draft creation. An ambiguous create result requires checking X before another attempt. A retry may re-upload images already uploaded by a previous failed attempt.
+The web page can stage a bundle, query connection status, and read the outcome of a job it staged. Draft creation requires the extension’s review action unless automatic creation was enabled on the review page. Images upload sequentially; their returned media IDs are inserted at the corresponding document positions. Any image failure prevents draft creation. A definite refusal from X (4xx, including its firewall) can be retried directly. An ambiguous create result requires checking X before another attempt. A retry may re-upload images already uploaded by a previous failed attempt.
 
 See [extension instructions](extension/README.md) and [architecture](docs/architecture.md).
+
+## Agent skill
+
+[`skills/md2xarticle`](skills/md2xarticle/SKILL.md) lets a coding agent take a finished Markdown file to an X draft: it checks the local images and cover, loads everything into the website through `playwright-cli` in your own Chrome, creates the draft, and reports the draft URL. It needs companion 0.1.2 with **Create drafts without this review** ticked once; until then it stops at the review for your click. Copy or symlink the directory into your agent's skills folder.
 
 ## Format support
 
@@ -76,7 +80,8 @@ See [extension instructions](extension/README.md) and [architecture](docs/archit
 | HTML `<br>` outside tables / comments | Converted to line breaks / omitted without modifying original source |
 | Other HTML, footnotes, complex list blocks, nested images/diagrams | Blocked where the converter would lose content |
 | Math | Source kept as plain text/code, with a warning; use an image for rendered notation |
-| Covers, ALT descriptions, GIF/SVG/video | Not implemented by this prototype; set or convert separately |
+| Cover | Uploaded and set on the draft by companion 0.1.2+ |
+| ALT descriptions, GIF/SVG/video | Not implemented by this prototype; set or convert separately |
 
 The distinction between X platform capabilities and this bridge’s limitations matters. For example, **X’s official API documents LaTeX and native tables**. This prototype implements tables through Kaitox’s private adapter, but not LaTeX. See the [complete compatibility matrix and sources](docs/compatibility.md).
 
@@ -117,7 +122,7 @@ The production app at <https://md2xarticle.com> is served by Cloudflare Workers 
 
 The build runs tests and TypeScript checks, creates the companion for the exact production origin, and bundles the static web app. Cloudflare's Git integration supplies deployment credentials; no credentials belong in this repository. The domain and asset directory are declared in `wrangler.jsonc`. HTML and the companion ZIP are revalidated on each request; only content-hashed assets get long-lived browser caching.
 
-Cloudflare manages the custom domain's DNS and TLS certificate. The zone's **Always Use HTTPS** setting is enabled, redirecting HTTP requests while preserving paths and query strings. This zone setting is managed separately from Wrangler. Monitor deployments and build logs in the [Cloudflare project dashboard](https://dash.cloudflare.com/4c7b6a86dbcbd91469298d396009cccf/workers/services/view/md2xarticle/production).
+Cloudflare manages the custom domain's DNS and TLS certificate. The zone's **Always Use HTTPS** setting is enabled, redirecting HTTP requests while preserving paths and query strings. This zone setting is managed separately from Wrangler. Monitor deployments and build logs in the Cloudflare dashboard for the `md2xarticle` Worker.
 
 For local production verification or an authenticated manual deployment:
 
@@ -130,7 +135,7 @@ pnpm run deploy
 
 Use `pnpm run deploy` explicitly: `pnpm deploy` is pnpm's separate workspace-packaging command. The production build supplies `ARTICLE_STUDIO_ORIGIN` from the shell; `.env.example` is documentation, not an automatically loaded configuration file. Reload the unpacked extension after rebuilding and refresh the web app to use the new origin. Future Chrome Web Store package and listing updates remain separate from website deployment.
 
-The public app serves code and fonts; Markdown parsing, image preparation, and saved drafts stay in the browser. Opening a remote image URL still makes a request to its host. Only the companion's confirmed review action sends prepared article content to X.
+The public app serves code and fonts; Markdown parsing, image preparation, and saved drafts stay in the browser. Opening a remote image URL still makes a request to its host. Prepared article content goes to X only from the companion: on the confirmed review action, or on **Create X draft** when automatic creation is enabled there.
 
 The homepage includes a visible, static product introduction in `index.html`; the editor mounts separately below it. Crawlers receive the title, workflow, links and application metadata without executing JavaScript. The 1200×630 social image has an editable SVG source in `public/og/`.
 

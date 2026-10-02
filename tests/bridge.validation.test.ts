@@ -65,6 +65,16 @@ describe('Article Studio bridge bundle validation', () => {
     expect(MAX_TOTAL_ASSET_BYTES).toBe(20 * 1024 * 1024);
   });
 
+  it('validates an optional cover with the same rules and counts it toward the total', async () => {
+    const cover = asset('studio-cover://cover', new Uint8Array([7, 7, 7]));
+    expect(validateDraftBundle(bundle({ cover })).cover).toEqual(cover);
+    expect(() => validateDraftBundle(bundle({ cover: { ...cover, mime: 'image/gif' } }))).toThrow(/cover\.mime/);
+    const chunks = Array.from({ length: 4 }, (_, index) => asset(`chunk-${index}`, new Uint8Array(4 * 1024 * 1024)));
+    const large = asset('studio-cover://cover', new Uint8Array(4 * 1024 * 1024 + 1));
+    expect(() => validateDraftBundle(bundle({ assets: chunks, cover: large }))).toThrow(/20 MiB/);
+    await expect(verifyDraftBundleHashes(bundle({ cover: { ...cover, base64: Buffer.from([7, 7, 8]).toString('base64') } }))).rejects.toMatchObject({ code: 'ASSET_HASH_MISMATCH' });
+  });
+
   it('checks each declared SHA-256 and catches tampering', async () => {
     const original = new Uint8Array([9, 8, 7]);
     const valid = bundle({ assets: [asset('image-a', original)] });

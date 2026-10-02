@@ -13,6 +13,7 @@ Date: **2026-09-15** · Article Studio 0.1.0
 | Web browser smoke | Revised automatic editor/clipboard workflow passed against both the production app and rebuilt HTML |
 | Re-import regression | Reproduced the old-image failure before the fix; identical-file re-import, saved reload, fresh attachment hashes, image reordering, distinct articles sharing paths, delayed imports, and changed Mermaid inputs pass after the fix |
 | Real unpacked extension in isolated Chromium | Page connection, staging, review, repeated staging, missing-X preflight and discard passed |
+| Companion 0.1.2 against the local X fixture (2026-10-02) | `browser-bridge-smoke.js` and `browser-auto-create.js` passed: cover uploaded and set, job status and draft URL shown on the page, simulated firewall 403 reported as a retryable failure with no draft, automatic creation without the review. The `md2xarticle` skill's generated script created a fixture draft from files on disk. Not yet run against a real X account or in a Chrome attached through the Playwright Extension |
 | `pnpm build:html` | Built a single HTML file with embedded scripts, CSS, fonts, renderer, and notices |
 | Original standalone HTML opened from disk with Chrome offline | Passed before the UX revision; current browser tool blocks file-protocol navigation, so the revised artifact is exercised via localhost |
 | Revised standalone HTML with networking disabled after loading | Example image, table, and Mermaid render automatically without asset requests |

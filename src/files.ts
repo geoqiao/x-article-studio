@@ -2,6 +2,8 @@ import type { LocalAssetMap } from './types';
 
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
+/** Attachment key and bundle source for a cover chosen in the app instead of frontmatter. */
+export const COVER_KEY = 'studio-cover://cover';
 
 export function normalizePath(value: string): string {
   let decoded: string;

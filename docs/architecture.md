@@ -62,7 +62,7 @@ Async Clipboard is tried first. If it is blocked or unavailable, a selected rich
 
 A standalone website cannot read another origin’s login cookies. The companion injects its bundled runner into an existing X Articles tab. `ct0` is read there, and X requests use the page’s own `fetch` with credentials included. Cookie values are not returned to Article Studio or saved in extension storage. Kaitox supplies the public web-client bearer fallback; it is not a user API secret.
 
-The page protocol accepts status and staging only. Draft creation uses messages from the extension’s own review page. Page requests must come from the top frame and an exact configured app origin. Extension host permissions cover the app and X; they do not grant access to arbitrary image sites. Remote images are retrieved by the web app or supplied locally before staging.
+The page protocol accepts status, staging, and reading the outcome of a staged job. Draft creation starts from the extension’s own review page, or directly on staging once the user has enabled automatic creation there. That setting can only be changed from an extension page, so the website and anything driving it cannot enable it. Page requests must come from the top frame and an exact configured app origin. Extension host permissions cover the app and X; they do not grant access to arbitrary image sites. Remote images are retrieved by the web app or supplied locally before staging.
 
 Private GraphQL operation IDs are taken from observed X resource URLs where available, with Kaitox’s pinned constants as fallback. X can rotate IDs or change request requirements. This is an explicit maintenance risk and a reason a successful build does not certify live integration.
 
@@ -70,7 +70,7 @@ Private GraphQL operation IDs are taken from observed X resource URLs where avai
 
 Kaitox’s higher-level orchestration catches individual image failures and can continue with skipped images. This bridge calls its lower-level client directly: every referenced image must upload before the draft mutation runs.
 
-Jobs are stored in extension IndexedDB. A transaction claims a pending job so duplicate clicks cannot start two attempts. Completed jobs retain their result. Upload/preflight failures allow an explicit retry; uncertainty after draft creation begins requires checking X before retrying. Interrupted jobs also become uncertain. There is no automatic create retry and no publish mutation.
+Jobs are stored in extension IndexedDB. A transaction claims a pending job so duplicate clicks cannot start two attempts. Completed jobs retain their result. Upload/preflight failures allow an explicit retry, and so does a definite 4xx refusal of the create request (firewall block, authentication, rate limit), because no draft exists. No answer, a timeout, or a 5xx after draft creation begins is uncertain and requires checking X before retrying. Interrupted jobs also become uncertain. There is no automatic create retry and no publish mutation.
 
 A failure after several uploads can leave unattached media on X; this prototype does not delete or resume those uploads. Preparing the document again produces a new job ID, so idempotency applies to a staged job, not all historically identical articles. Browser or X failures cannot be made into a cross-system atomic transaction.
 
@@ -78,4 +78,4 @@ A failure after several uploads can leave unattached media on X; this prototype 
 
 An OAuth-backed adapter could upload media and use [`POST /2/articles/draft`](https://docs.x.com/x-api/articles/create-draft-article.md), avoiding the browser companion. It would require developer access, user OAuth, current account/endpoint entitlement, pricing verification, and explicit conversion to the public schema. The current private payload must not be sent unchanged to that endpoint.
 
-Further work should follow a real-account trial: verify native tables and ordering first, then add ALT, covers, formula entities, and support for complex nesting according to observed need. Monetization and willingness to pay have not been validated.
+Further work should follow a real-account trial: verify native tables and ordering first, then add ALT, formula entities, and support for complex nesting according to observed need. Monetization and willingness to pay have not been validated.

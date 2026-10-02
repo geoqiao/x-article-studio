@@ -1,6 +1,6 @@
 import type { BundleAsset, DraftBundle } from './types';
 
-/** The wire protocol is deliberately small: the page can request status or stage a bundle. */
+/** The wire protocol is deliberately small: the page can request status, stage a bundle, or read the job it staged. */
 export const BRIDGE_PROTOCOL = 'md2x-article-studio';
 export const BRIDGE_PROTOCOL_VERSION = 1;
 export const DEFAULT_ARTICLE_STUDIO_ORIGINS = [
@@ -13,10 +13,30 @@ export const MAX_ASSET_BYTES = 5 * 1024 * 1024;
 export const MAX_TOTAL_ASSET_BYTES = 20 * 1024 * 1024;
 export const SUPPORTED_IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/webp'] as const;
 
-export type BridgeStatus = { available: boolean; version?: string };
-export type BridgeResult = { reviewOpened: boolean; jobId: string };
+/** Features added after companion 0.1.1. Older companions report none and ignore unknown fields. */
+export const COMPANION_CAPABILITIES = ['cover', 'job', 'auto-create'] as const;
+export type CompanionCapability = (typeof COMPANION_CAPABILITIES)[number];
 
-export type BridgeAction = 'status' | 'stage';
+export type BridgeStatus = { available: boolean; version?: string; capabilities?: string[]; autoCreate?: boolean };
+export type BridgeResult = { reviewOpened: boolean; jobId: string; autoCreate?: boolean };
+/** What the page may learn about a job it staged. Article content never travels back. */
+export type BridgeJob = {
+  jobId: string;
+  status: 'pending' | 'creating' | 'uploading' | 'failed' | 'uncertain' | 'completed' | 'missing';
+  error?: string;
+  errorCode?: string;
+  warning?: string;
+  retryable?: boolean;
+  draftUrl?: string;
+  progress?: { done: number; total: number };
+};
+
+export type BridgeAction = 'status' | 'stage' | 'job';
+const BRIDGE_ACTIONS: readonly unknown[] = ['status', 'stage', 'job'];
+
+export function isBridgeAction(value: unknown): value is BridgeAction {
+  return BRIDGE_ACTIONS.includes(value);
+}
 
 export interface BridgeRequestMessage {
   source: typeof BRIDGE_PROTOCOL;
@@ -25,6 +45,7 @@ export interface BridgeRequestMessage {
   requestId: string;
   action: BridgeAction;
   bundle?: DraftBundle;
+  jobId?: string;
 }
 
 export interface BridgeResponseMessage {
@@ -34,7 +55,7 @@ export interface BridgeResponseMessage {
   requestId: string;
   action: BridgeAction;
   ok: boolean;
-  data?: BridgeStatus | BridgeResult;
+  data?: BridgeStatus | BridgeResult | BridgeJob;
   error?: { code: string; message: string };
 }
 
@@ -102,8 +123,7 @@ export function decodeBase64(value: string): Uint8Array {
   return bytes;
 }
 
-function validateAsset(asset: unknown, index: number, seenSources: Set<string>, seenNames: Set<string>, issues: string[]): number {
-  const path = `assets[${index}]`;
+function validateAsset(asset: unknown, path: string, seenSources: Set<string>, seenNames: Set<string>, issues: string[]): number {
   if (!isRecord(asset)) {
     issues.push(`${path} must be an object`);
     return 0;
@@ -149,6 +169,7 @@ function validateAsset(asset: unknown, index: number, seenSources: Set<string>, 
 /**
  * Validate the page supplied bundle before it crosses the extension boundary.
  * This checks shape, source/name uniqueness, supported media, base64, and both asset caps.
+ * The optional cover counts toward the total size but not the body image count.
  */
 export function validateDraftBundle(value: unknown): DraftBundle {
   const issues: string[] = [];
@@ -168,8 +189,9 @@ export function validateDraftBundle(value: unknown): DraftBundle {
     const seenNames = new Set<string>();
     let totalBytes = 0;
     value.assets.forEach((asset, index) => {
-      totalBytes += validateAsset(asset, index, seenSources, seenNames, issues);
+      totalBytes += validateAsset(asset, `assets[${index}]`, seenSources, seenNames, issues);
     });
+    if (value.cover !== undefined) totalBytes += validateAsset(value.cover, 'cover', seenSources, seenNames, issues);
     if (totalBytes > MAX_TOTAL_ASSET_BYTES) issues.push('assets exceed the 20 MiB decoded total limit');
   }
 
@@ -189,8 +211,8 @@ export async function verifyDraftBundleHashes(bundle: DraftBundle): Promise<void
   const subtle = globalThis.crypto?.subtle;
   if (!subtle) throw new BridgeError('HASH_UNAVAILABLE', 'Web Crypto is unavailable; cannot verify image assets.');
 
-  for (let index = 0; index < validated.assets.length; index += 1) {
-    const asset: BundleAsset = validated.assets[index];
+  const assets: BundleAsset[] = validated.cover ? [...validated.assets, validated.cover] : validated.assets;
+  for (const asset of assets) {
     const bytes = decodeBase64(asset.base64);
     // Give Web Crypto an owned ArrayBuffer. TS 5.9 correctly rejects a view
     // whose backing buffer may be SharedArrayBuffer based.
@@ -217,7 +239,7 @@ function isBridgeResponse(value: unknown): value is BridgeResponseMessage {
     value.version === BRIDGE_PROTOCOL_VERSION &&
     value.type === 'response' &&
     typeof value.requestId === 'string' &&
-    (value.action === 'status' || value.action === 'stage') &&
+    isBridgeAction(value.action) &&
     typeof value.ok === 'boolean'
   );
 }
@@ -225,7 +247,7 @@ function isBridgeResponse(value: unknown): value is BridgeResponseMessage {
 const STATUS_TIMEOUT_MS = 2_000;
 const STAGE_TIMEOUT_MS = 30_000;
 
-async function requestExtension<T extends BridgeStatus | BridgeResult>(action: BridgeAction, bundle?: DraftBundle): Promise<T> {
+async function requestExtension<T extends BridgeStatus | BridgeResult | BridgeJob>(action: BridgeAction, payload: { bundle?: DraftBundle; jobId?: string } = {}): Promise<T> {
   if (typeof window === 'undefined' || !window.location?.origin) {
     throw new BridgeError('UNAVAILABLE', 'The article studio bridge requires a browser window.');
   }
@@ -238,7 +260,7 @@ async function requestExtension<T extends BridgeStatus | BridgeResult>(action: B
     type: 'request',
     requestId,
     action,
-    ...(bundle ? { bundle } : {}),
+    ...payload,
   };
 
   return await new Promise<T>((resolve, reject) => {
@@ -271,22 +293,36 @@ async function requestExtension<T extends BridgeStatus | BridgeResult>(action: B
   });
 }
 
-/** Probe for the companion without exposing any extension state to the page. */
+/** Probe for the companion: its version, features, and whether its owner turned on automatic creation. */
 export async function getBridgeStatus(): Promise<BridgeStatus> {
   try {
     const status = await requestExtension<BridgeStatus>('status');
     if (!status.available) return { available: false };
-    return typeof status.version === 'string' ? { available: true, version: status.version } : { available: true };
+    return {
+      available: true,
+      ...(typeof status.version === 'string' ? { version: status.version } : {}),
+      capabilities: Array.isArray(status.capabilities) ? status.capabilities.filter((item): item is string => typeof item === 'string') : [],
+      autoCreate: status.autoCreate === true,
+    };
   } catch {
     return { available: false };
   }
 }
 
-/** Stage a prepared bundle for explicit review in the extension. */
+/** Read the state of a job this page staged. Needs a companion with the 'job' capability. */
+export async function getDraftJob(jobId: string): Promise<BridgeJob> {
+  const job = await requestExtension<BridgeJob>('job', { jobId });
+  if (typeof job.jobId !== 'string' || typeof job.status !== 'string') {
+    throw new BridgeError('INVALID_RESPONSE', 'The extension returned an invalid job response.');
+  }
+  return job;
+}
+
+/** Stage a prepared bundle. The companion opens its review, or starts creation when its owner enabled that. */
 export async function sendDraft(bundle: DraftBundle): Promise<BridgeResult> {
   const validated = validateDraftBundle(bundle);
   await verifyDraftBundleHashes(validated);
-  const result = await requestExtension<BridgeResult>('stage', validated);
+  const result = await requestExtension<BridgeResult>('stage', { bundle: validated });
   if (typeof result.jobId !== 'string' || typeof result.reviewOpened !== 'boolean') {
     throw new BridgeError('INVALID_RESPONSE', 'The extension returned an invalid staging response.');
   }

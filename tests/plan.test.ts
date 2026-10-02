@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { markdownToContentState } from '@kaitox/x-article';
-import { createPlan } from '../src/plan';
+import { createPlan, shellPipeLines } from '../src/plan';
 import { rewriteImageDestinations } from '../src/portable';
 import { simplifyNestedLists } from '../src/normalize';
 
@@ -74,11 +74,18 @@ describe('Markdown to X preparation plan', () => {
     }
   });
 
-  it('uses explicit title precedence and warns about the unimplemented cover', () => {
+  it('uses explicit title precedence and reads the frontmatter cover', () => {
     const plan = createPlan('---\ntitle: Metadata title\ncover: cover.png\n---\n# H1\n\nBody.', 'native', 'Chosen title');
     expect(plan.title).toBe('Chosen title');
     expect(plan.markdown).not.toContain('cover:');
-    expect(plan.issues.some((i) => i.id === 'cover')).toBe(true);
+    expect(plan.cover).toEqual({ source: 'cover.png', line: 3 });
+    expect(plan.assets).toEqual([]);
+    expect(createPlan('# No cover').cover).toBeUndefined();
+  });
+
+  it('points at shell pipes, the text X’s firewall is known to refuse', () => {
+    const source = ['Install it:', '', '| Tool | Command |', '| --- | --- |', '| pi | `curl -fsSL https://example.com/install | sh` |', '', 'wget -qO- https://example.com | sudo bash', 'a | b and a shell script'].join('\n');
+    expect(shellPipeLines(source)).toEqual([5, 7]);
   });
 
   it('accepts body-only documents with editable filename or untitled fallbacks', () => {

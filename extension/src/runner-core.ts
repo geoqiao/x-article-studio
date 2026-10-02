@@ -34,6 +34,86 @@ function errorMessage(error: unknown): string {
   return message.length > 800 ? `${message.slice(0, 797)}…` : message;
 }
 
+export interface ObservedResponse {
+  status: number;
+  body: string;
+}
+
+/**
+ * Kaitox reports a failed request as text only. Recording the response lets the
+ * runner tell a definite refusal from an unknown outcome.
+ */
+function observingFetch(observe: (response: ObservedResponse | undefined) => void) {
+  return async (url: string, init?: RequestInit) => {
+    observe(undefined);
+    const response = await window.fetch(url, init);
+    const text = async () => {
+      const body = await response.text();
+      observe({ status: response.status, body });
+      return body;
+    };
+    return { ok: response.ok, status: response.status, text, json: async () => JSON.parse(await text()) };
+  };
+}
+
+/** The first error X put in a JSON body, without echoing an HTML error page. */
+function xErrorDetail(body: string): string {
+  try {
+    const parsed = JSON.parse(body) as { errors?: Array<{ message?: unknown }> };
+    const message = parsed.errors?.[0]?.message;
+    if (typeof message !== 'string' || !message) return '';
+    return message.length > 200 ? `${message.slice(0, 197)}…` : message;
+  } catch {
+    return '';
+  }
+}
+
+function isFirewallBlock(response: ObservedResponse): boolean {
+  if (response.status !== 403 || /^\s*[{[]/.test(response.body)) return false;
+  return /cloudflare|you have been blocked|attention required|cf-ray/i.test(response.body);
+}
+
+/**
+ * Decide what a failed ArticleEntityDraftCreate means. A 4xx answer is a refusal:
+ * no draft exists and another attempt is safe. No answer, a timeout, or a 5xx may
+ * still have created one, so those keep the check-X-first gate.
+ */
+export function classifyCreateFailure(response: ObservedResponse | undefined, error: unknown): RunnerFailure {
+  const refused = response && response.status >= 400 && response.status < 500 && response.status !== 408;
+  if (!refused) {
+    const detail = response ? `HTTP ${response.status}` : errorMessage(error);
+    return new RunnerFailure(
+      'create',
+      'DRAFT_CREATE_OUTCOME_UNKNOWN',
+      `X did not provide a definitive draft creation result. Open X Articles and check before trying again. (${detail})`,
+    );
+  }
+  if (isFirewallBlock(response)) {
+    return new RunnerFailure(
+      'rejected',
+      'X_FIREWALL_BLOCKED',
+      'X’s firewall blocked this request before it reached X, so no draft was created. This usually happens when the article contains a shell pipe command such as “curl … | sh”. Reword or remove that text in Article Studio, then create the draft again.',
+    );
+  }
+  const detail = xErrorDetail(response.body);
+  const suffix = detail ? ` (${detail})` : '';
+  if (response.status === 429) {
+    return new RunnerFailure('rejected', 'X_RATE_LIMITED', `X is limiting requests from this account (HTTP 429), so no draft was created. Wait a few minutes, then try again.${suffix}`);
+  }
+  if (response.status === 401 || response.status === 403) {
+    return new RunnerFailure(
+      'rejected',
+      'X_AUTH_REJECTED',
+      `X refused the request (HTTP ${response.status}), so no draft was created. Reload the X Articles tab, check that you are signed in and that your account has Articles access, then try again.${suffix}`,
+    );
+  }
+  return new RunnerFailure(
+    'rejected',
+    'DRAFT_CREATE_REJECTED',
+    `X rejected the draft (HTTP ${response.status}), so no draft was created. Reload the X Articles tab and try again; X may have changed its editor.${suffix}`,
+  );
+}
+
 function readCsrfToken(): string {
   const match = document.cookie.match(/(?:^|;\s*)ct0=([^;]+)/);
   if (!match) return '';
@@ -93,12 +173,13 @@ export async function runArticleDraft(input: unknown): Promise<RunnerResult> {
     if (!csrfToken) throw new RunnerFailure('preflight', 'AUTH_REQUIRED', 'Sign in to X in the X Articles tab, then return here and choose Create X draft. Your account needs Articles access.');
 
     const queryIds = deriveQueryIds();
+    let lastResponse: ObservedResponse | undefined;
     let client: XArticleClient;
     try {
       client = new XArticleClient(
         { bearerToken: '', csrfToken },
         {
-          fetchImpl: window.fetch.bind(window) as any,
+          fetchImpl: observingFetch((response) => { lastResponse = response; }) as any,
           credentialsMode: 'include',
           articleDraftCreateQueryId: queryIds.queryId,
           updateCoverMediaQueryId: queryIds.coverQueryId,
@@ -122,6 +203,17 @@ export async function runArticleDraft(input: unknown): Promise<RunnerResult> {
       }
     }
 
+    // The cover uploads with the body images, so its failure also stops before creation.
+    let coverMediaId: string | undefined;
+    if (bundle.cover) {
+      try {
+        coverMediaId = await client.uploadMedia(decodeBase64(bundle.cover.base64), bundle.cover.mime, 'tweet_image');
+        if (!coverMediaId) throw new Error('X returned no media id.');
+      } catch (error) {
+        throw new RunnerFailure('assets', 'ASSET_UPLOAD_FAILED', `The cover image could not be uploaded: ${errorMessage(error)}`);
+      }
+    }
+
     let contentState;
     try {
       const converted = markdownToContentState(bundle.markdown, mediaMap);
@@ -133,25 +225,36 @@ export async function runArticleDraft(input: unknown): Promise<RunnerResult> {
       throw new RunnerFailure('preflight', 'CONVERSION_FAILED', `Markdown conversion failed: ${errorMessage(error)}`);
     }
 
-    let created: { restId?: string };
+    let created: { restId?: string; raw?: unknown };
     try {
-      // This is intentionally the only draft mutation. There is no publish call here.
+      // This and the cover below are the only draft mutations. There is no publish call here.
+      lastResponse = undefined;
       created = await client.createArticleDraft(bundle.title, contentState);
     } catch (error) {
-      throw new RunnerFailure(
-        'create',
-        'DRAFT_CREATE_OUTCOME_UNKNOWN',
-        `X did not provide a definitive draft creation result. Open X Articles and check before trying again. (${errorMessage(error)})`,
-      );
+      throw classifyCreateFailure(lastResponse, error);
     }
     if (!created.restId) {
+      const detail = xErrorDetail(JSON.stringify(created.raw ?? {}));
       throw new RunnerFailure(
         'create',
         'DRAFT_ID_MISSING',
-        'X accepted the request but returned no draft id. Open X Articles and verify the result before trying again.',
+        `X answered without a draft id${detail ? ` (${detail})` : ''}. Open X Articles and verify the result before trying again.`,
       );
     }
-    return { ok: true, restId: String(created.restId) };
+    const restId = String(created.restId);
+    if (!coverMediaId) return { ok: true, restId };
+    try {
+      lastResponse = undefined;
+      const cover = await client.updateCoverMedia(restId, coverMediaId);
+      const detail = xErrorDetail(JSON.stringify(cover.raw ?? {}));
+      if (detail) throw new Error(detail);
+      return { ok: true, restId };
+    } catch (error) {
+      // The draft exists, so a cover problem is reported without failing the job.
+      const observed = lastResponse as ObservedResponse | undefined;
+      const reason = observed && observed.status >= 400 ? `HTTP ${observed.status}` : errorMessage(error).split('\n')[0];
+      return { ok: true, restId, warning: `The draft was created, but X did not accept the cover. Set the cover in X. (${reason})` };
+    }
   } catch (error) {
     if (error instanceof RunnerFailure) return { ok: false, phase: error.phase, code: error.code, message: error.message };
     return { ok: false, phase: 'preflight', code: 'RUNNER_FAILED', message: errorMessage(error) };

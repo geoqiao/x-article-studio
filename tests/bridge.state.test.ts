@@ -4,6 +4,7 @@ import {
   armUncertainRetry,
   claimJobState,
   completeJob,
+  failJob,
   makeJobRecord,
   markUncertain,
   recoverInterruptedJob,
@@ -60,5 +61,21 @@ describe('Article Studio job state', () => {
     expect(completed.bundle).toBeUndefined();
     expect(completed.restId).toBe('123');
     expect(markUncertain(record, 'check X').bundle).toBeDefined();
+  });
+
+  it('lets a definite refusal be retried without the check-X gate', () => {
+    const claimed = claimJobState(makeJobRecord(pendingBundle()), 'attempt-a');
+    if (claimed.kind !== 'claimed') throw new Error('expected a claim');
+    const refused = failJob(claimed.job, 'X’s firewall blocked this request.', true, 'X_FIREWALL_BLOCKED');
+    expect(refused).toMatchObject({ status: 'failed', retryable: true, errorCode: 'X_FIREWALL_BLOCKED' });
+    expect(refused.bundle).toBeDefined();
+    const retried = claimJobState(refused, 'attempt-b');
+    expect(retried.kind).toBe('claimed');
+    if (retried.kind === 'claimed') expect(retried.job.errorCode).toBeUndefined();
+  });
+
+  it('keeps a cover warning on a completed draft', () => {
+    const completed = completeJob(makeJobRecord(pendingBundle()), '123', 'https://x.com/compose/articles/edit/123', 'Set the cover in X.');
+    expect(completed).toMatchObject({ status: 'completed', warning: 'Set the cover in X.' });
   });
 });

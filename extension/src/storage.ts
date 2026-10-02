@@ -1,8 +1,12 @@
+import type { CompanionSettings } from './protocol.js';
 import { claimJobState, type ClaimDecision, type JobRecord } from './state.js';
 
 const DATABASE_NAME = 'article-studio-bridge';
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 const JOB_STORE = 'jobs';
+const SETTINGS_STORE = 'settings';
+const SETTINGS_KEY = 'companion';
+const DEFAULT_SETTINGS: CompanionSettings = { autoCreate: false };
 
 let databasePromise: Promise<IDBDatabase> | undefined;
 
@@ -15,8 +19,17 @@ function openDatabase(): Promise<IDBDatabase> {
     request.onupgradeneeded = () => {
       const database = request.result;
       if (!database.objectStoreNames.contains(JOB_STORE)) database.createObjectStore(JOB_STORE, { keyPath: 'jobId' });
+      if (!database.objectStoreNames.contains(SETTINGS_STORE)) database.createObjectStore(SETTINGS_STORE);
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const database = request.result;
+      // Let a newer extension version upgrade the schema instead of blocking it.
+      database.onversionchange = () => {
+        database.close();
+        databasePromise = undefined;
+      };
+      resolve(database);
+    };
     request.onerror = () => reject(request.error ?? new Error('Unable to open extension storage.'));
   });
   return databasePromise;
@@ -105,6 +118,29 @@ export async function updateJob(jobId: string, updater: (job: JobRecord) => JobR
     transaction.oncomplete = () => resolve(result);
     transaction.onerror = () => reject(transaction.error ?? new Error('Unable to update extension storage.'));
     transaction.onabort = () => reject(transaction.error ?? new Error('Extension storage update was aborted.'));
+  });
+}
+
+export async function getSettings(): Promise<CompanionSettings> {
+  const database = await openDatabase();
+  return await new Promise<CompanionSettings>((resolve, reject) => {
+    const request = database.transaction(SETTINGS_STORE, 'readonly').objectStore(SETTINGS_STORE).get(SETTINGS_KEY);
+    request.onsuccess = () => {
+      const stored = request.result as Partial<CompanionSettings> | undefined;
+      resolve({ ...DEFAULT_SETTINGS, autoCreate: stored?.autoCreate === true });
+    };
+    request.onerror = () => reject(request.error ?? new Error('Unable to read companion settings.'));
+  });
+}
+
+export async function putSettings(settings: CompanionSettings): Promise<void> {
+  const database = await openDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction(SETTINGS_STORE, 'readwrite');
+    transaction.objectStore(SETTINGS_STORE).put(settings, SETTINGS_KEY);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('Unable to save companion settings.'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('Companion settings write was aborted.'));
   });
 }
 

@@ -1,4 +1,4 @@
-import type { ExtensionRequest, ReviewJobView, ReviewResponse } from './protocol.js';
+import type { CompanionSettings, ExtensionRequest, ReviewJobView, ReviewResponse } from './protocol.js';
 import type { DraftBundle } from '../../src/types.js';
 import { getJob } from './storage.js';
 import { X_ARTICLES_URL } from './x-tab.js';
@@ -12,6 +12,7 @@ let previewBundle: DraftBundle | undefined;
 let previewLoaded = false;
 let notice = '';
 let actionInFlight = false;
+let settings: CompanionSettings = { autoCreate: false };
 
 function request(message: ReviewRequest): Promise<ReviewResponse> {
   return new Promise((resolve, reject) => {
@@ -73,11 +74,47 @@ function appendButton(container: HTMLElement, label: string, onClick: () => void
   return button;
 }
 
+/**
+ * The switch that replaces the review click. It lives on this extension page, so
+ * the website and automation driving the website cannot turn it on.
+ */
+function settingsSection(): HTMLElement {
+  const section = element('section', undefined, 'settings');
+  const label = element('label', undefined, 'setting');
+  const checkbox = element('input');
+  checkbox.type = 'checkbox';
+  checkbox.checked = settings.autoCreate;
+  checkbox.addEventListener('change', () => void saveAutoCreate(checkbox.checked));
+  label.append(checkbox, element('span', 'Create drafts without this review'));
+  section.append(
+    label,
+    element(
+      'p',
+      'When on, Create X draft on the Article Studio website uploads the images and creates the draft straight away. A failed or uncertain attempt still opens this review. Drafts are never published for you. Change this any time from the extension’s options.',
+      'muted',
+    ),
+  );
+  return section;
+}
+
+async function saveAutoCreate(autoCreate: boolean): Promise<void> {
+  try {
+    const response = await request({ type: 'article-studio-settings-set', autoCreate });
+    if (response.ok && response.settings) settings = response.settings;
+    else if (!response.ok) notice = response.error.message;
+  } catch (error) {
+    notice = error instanceof Error ? error.message : String(error);
+  }
+  await refresh();
+}
+
 function renderEmpty(message: string, title = 'Article Studio review'): void {
   if (!root) return;
   root.replaceChildren();
   const card = element('section', undefined, 'card');
   card.append(element('p', 'Article Studio', 'eyebrow'), element('h1', title), element('p', message, 'muted'));
+  if (notice) card.append(element('p', notice, 'notice'));
+  card.append(settingsSection());
   root.append(card);
 }
 
@@ -93,6 +130,7 @@ function renderView(view: ReviewJobView, bundle = previewBundle): void {
   const details = element('dl', undefined, 'details');
   for (const [label, value] of [
     ['Images', String(view.imageCount)],
+    ['Cover', view.hasCover ? 'Included' : 'None'],
     ['Image data', formatBytes(view.totalBytes)],
     ['Job ID', view.jobId],
   ]) {
@@ -107,10 +145,10 @@ function renderView(view: ReviewJobView, bundle = previewBundle): void {
     markdown.tabIndex = 0;
     preview.append(markdown);
 
-    if (bundle.assets.length) {
+    if (bundle.assets.length || bundle.cover) {
       preview.append(element('h2', 'Asset review'));
       const grid = element('div', undefined, 'asset-grid');
-      for (const asset of bundle.assets) {
+      for (const asset of bundle.cover ? [bundle.cover, ...bundle.assets] : bundle.assets) {
         const figure = element('figure', undefined, 'asset');
         const image = element('img');
         image.loading = 'lazy';
@@ -119,7 +157,7 @@ function renderView(view: ReviewJobView, bundle = previewBundle): void {
         // The bytes are already in extension IndexedDB. This data URL never
         // causes a network request for the opaque studio-asset:// source.
         image.src = `data:${asset.mime};base64,${asset.base64}`;
-        figure.append(image, element('figcaption', `${asset.fileName} · ${asset.source}`));
+        figure.append(image, element('figcaption', asset === bundle.cover ? `Cover · ${asset.fileName}` : `${asset.fileName} · ${asset.source}`));
         grid.append(figure);
       }
       preview.append(grid);
@@ -135,6 +173,7 @@ function renderView(view: ReviewJobView, bundle = previewBundle): void {
   }
 
   if (view.error) card.append(element('p', view.error, view.status === 'uncertain' ? 'warning' : 'error'));
+  if (view.warning) card.append(element('p', view.warning, 'warning'));
   if (notice) card.append(element('p', notice, 'notice'));
 
   const actions = element('div', undefined, 'actions');
@@ -158,13 +197,19 @@ function renderView(view: ReviewJobView, bundle = previewBundle): void {
   if (view.status !== 'creating' && view.status !== 'uploading') {
     appendButton(actions, view.status === 'completed' ? 'Delete stored job' : 'Discard staged article', () => void discardJob());
   }
-  card.append(actions);
+  card.append(actions, settingsSection());
   root.append(card);
 }
 
 async function refresh(): Promise<void> {
+  try {
+    const response = await request({ type: 'article-studio-settings-get' });
+    if (response.ok && response.settings) settings = response.settings;
+  } catch {
+    // The switch keeps its last known state; the job below still renders.
+  }
   if (!jobId) {
-    renderEmpty('This review link does not contain a job ID.', 'Review link unavailable');
+    renderEmpty('Create X draft on the Article Studio website opens a review here.', 'Companion settings');
     return;
   }
   try {

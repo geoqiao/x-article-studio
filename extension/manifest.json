@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "minimum_chrome_version": "116",
   "name": "Article Studio X companion",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Turn Markdown, images, tables, and Mermaid diagrams from Article Studio into X Article drafts, with a review before uploading.",
   "homepage_url": "https://md2xarticle.com/",
   "icons": {
@@ -17,6 +17,10 @@
   ],
   "background": {
     "service_worker": "background.js"
+  },
+  "options_ui": {
+    "page": "review.html",
+    "open_in_tab": true
   },
   "content_scripts": [
     {

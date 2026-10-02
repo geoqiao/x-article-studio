@@ -22,11 +22,11 @@ import {
   Undo2,
   X,
 } from "lucide-react";
-import { createPlan, MAX_MARKDOWN_LENGTH, safeFileStem } from "./plan";
+import { createPlan, MAX_MARKDOWN_LENGTH, safeFileStem, shellPipeLines } from "./plan";
 import {
   prepareArticle,
   safePreview,
-  disposeAssets,
+  disposeArticle,
   exportArticle,
   type AssetCache,
 } from "./prepare";
@@ -34,12 +34,18 @@ import { exportDraftBackup } from "./backup";
 import { simplifyNestedLists } from "./normalize";
 import { MarkdownEditor } from "./MarkdownEditor";
 import {
+  COVER_KEY,
   downloadBlob,
   MAX_TOTAL_BYTES,
   normalizePath,
   resolveLocalFile,
 } from "./files";
-import { getBridgeStatus, sendDraft } from "./bridge";
+import {
+  getBridgeStatus,
+  getDraftJob,
+  sendDraft,
+  type BridgeJob,
+} from "./bridge";
 import { loadDraft, saveDraft } from "./storage";
 import { SAMPLE, createSampleImage } from "./sample";
 import { FORMATS } from "./compatibility";
@@ -69,6 +75,8 @@ type Modal =
   | "example"
   | "copy"
   | null;
+/** A job staged from this page, tracked until the companion reports its outcome. */
+type DraftJob = BridgeJob & { auto: boolean };
 const STANDALONE = import.meta.env.VITE_STANDALONE_PREVIEW === "true";
 const FENCE = String.fromCharCode(96).repeat(3);
 
@@ -99,6 +107,8 @@ export default function App() {
   const [notice, setNotice] = useState("");
   const [copied, setCopied] = useState("");
   const [bridge, setBridge] = useState(false);
+  const [autoCreate, setAutoCreate] = useState(false);
+  const [draftJob, setDraftJob] = useState<DraftJob | null>(null);
   const [sending, setSending] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [manualCopy, setManualCopy] = useState<
@@ -113,6 +123,7 @@ export default function App() {
   const markdownInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
   const imageInput = useRef<HTMLInputElement>(null);
+  const coverInput = useRef<HTMLInputElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const activeAssets = useRef<PreparedArticle | undefined>(undefined);
   const importSequence = useRef(0);
@@ -156,6 +167,23 @@ export default function App() {
     () => safePreview(plan, previewAssets),
     [plan, previewAssets],
   );
+  // A cover chosen here takes precedence over the frontmatter path.
+  const coverSource = files.has(COVER_KEY) ? COVER_KEY : plan.cover?.source;
+  const coverAsset =
+    prepared?.files === files &&
+    prepared.path === documentPath &&
+    prepared.article.cover?.spec.source === coverSource
+      ? prepared.article.cover
+      : undefined;
+  const coverProblem =
+    progress.cover?.state === "error" ? progress.cover.message : undefined;
+  const coverState = !coverSource
+    ? "none"
+    : coverProblem
+      ? "error"
+      : coverAsset && current
+        ? "ready"
+        : "preparing";
   const assetErrors = Object.values(progress).filter(
     (asset) => asset.state === "error",
   );
@@ -192,12 +220,39 @@ export default function App() {
     })();
     if (!STANDALONE)
       getBridgeStatus().then((status) => {
-        if (!cancelled) setBridge(status.available);
+        if (cancelled) return;
+        setBridge(status.available);
+        setAutoCreate(status.autoCreate === true);
       });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // Follow a staged job until the companion reports a draft or the job is discarded.
+  // A failed or uncertain job can still change after the user acts in the review.
+  const trackedJobId = draftJob?.jobId;
+  const tracking =
+    !!draftJob && !["completed", "missing"].includes(draftJob.status);
+  useEffect(() => {
+    if (!trackedJobId || !tracking) return;
+    let cancelled = false;
+    const timer = setInterval(async () => {
+      try {
+        const next = await getDraftJob(trackedJobId);
+        if (cancelled) return;
+        setDraftJob((old) =>
+          old?.jobId === trackedJobId ? { ...next, auto: old.auto } : old,
+        );
+      } catch {
+        // The companion may be reloading; the next tick tries again.
+      }
+    }, 1_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [trackedJobId, tracking]);
 
   // Updating the document always updates the preview. There is no preparation step.
   useEffect(() => {
@@ -221,10 +276,10 @@ export default function App() {
           assetCache.current,
         );
         if (controller.signal.aborted) {
-          disposeAssets(result.assets);
+          disposeArticle(result);
           return;
         }
-        if (activeAssets.current) disposeAssets(activeAssets.current.assets);
+        if (activeAssets.current) disposeArticle(activeAssets.current);
         activeAssets.current = result;
         setPrepared({ article: result, files, path: documentPath });
       } catch (error) {
@@ -270,7 +325,7 @@ export default function App() {
   }, [copied]);
   useEffect(
     () => () => {
-      if (activeAssets.current) disposeAssets(activeAssets.current.assets);
+      if (activeAssets.current) disposeArticle(activeAssets.current);
     },
     [],
   );
@@ -326,6 +381,11 @@ export default function App() {
       const sources = target.assets
         .filter((asset) => asset.kind === "image")
         .map((asset) => asset.source);
+      // A local frontmatter cover is matched like a body image.
+      const wanted =
+        target.cover && !/^https?:\/\//i.test(target.cover.source)
+          ? [...sources, target.cover.source]
+          : sources;
       const incomingImages = new Map(
         images.map((file) => [
           normalizePath(file.webkitRelativePath || file.name),
@@ -338,7 +398,7 @@ export default function App() {
         );
       const matches = new Map<string, File>();
       let ambiguous = 0;
-      for (const source of sources) {
+      for (const source of wanted) {
         try {
           const file = resolveLocalFile(source, incomingImages, path, sources);
           if (file) matches.set(source, file);
@@ -387,7 +447,7 @@ export default function App() {
       }
       if (matchFolder) {
         setNotice(
-          `Matched ${matches.size} of ${sources.length} article images. ` +
+          `Matched ${matches.size} of ${wanted.length} article images. ` +
             (ambiguous
               ? "Some filenames are ambiguous; use Choose file for those images."
               : "Your Markdown is unchanged."),
@@ -409,13 +469,15 @@ export default function App() {
           "Opened " +
             docs[0].name +
             ". " +
-            (sources.length > matches.size
+            (wanted.length > matches.size
               ? "Select the image folder for this import. Previous image choices were cleared."
               : "The preview updates automatically."),
         );
       } else if (insertImages) {
+        const coverFile = target.cover && matches.get(target.cover.source);
         const newImages = images.filter(
           (file) =>
+            file !== coverFile &&
             !plan.assets.some((asset) => {
               try {
                 return (
@@ -469,7 +531,8 @@ export default function App() {
   function clearPreparedArticle() {
     assetCache.current.clear();
     setHighlightedLine(undefined);
-    if (activeAssets.current) disposeAssets(activeAssets.current.assets);
+    setDraftJob(null);
+    if (activeAssets.current) disposeArticle(activeAssets.current);
     activeAssets.current = undefined;
     setPrepared(undefined);
     setProgress({});
@@ -481,6 +544,20 @@ export default function App() {
     setFiles(new Map(files).set(source, file));
     setNotice(
       "Image changed. Use Undo change beside the image to restore the previous choice.",
+    );
+  }
+
+  function chooseCover(file: File | undefined) {
+    const next = new Map(files);
+    if (file) next.set(COVER_KEY, file);
+    else next.delete(COVER_KEY);
+    setFiles(next);
+    setNotice(
+      file
+        ? "Cover selected. The companion sets it when it creates the draft."
+        : plan.cover
+          ? "Cover choice removed. The cover line in your Markdown applies again."
+          : "Cover removed.",
     );
   }
 
@@ -569,13 +646,26 @@ export default function App() {
     try {
       const status = await getBridgeStatus();
       setBridge(status.available);
+      setAutoCreate(status.autoCreate === true);
       if (!status.available) {
         setModal("connect");
         return;
       }
-      await sendDraft(article.bundle);
+      const result = await sendDraft(article.bundle);
+      const auto = result.autoCreate === true;
+      // Companion 0.1.1 and earlier cannot report a job or set a cover.
+      setDraftJob(
+        status.capabilities?.includes("job")
+          ? { jobId: result.jobId, status: "pending", auto }
+          : null,
+      );
       setNotice(
-        "Review opened in the companion. Confirm there to upload images and create your draft.",
+        (auto
+          ? "Creating your X draft. Progress appears under the toolbar."
+          : "Review opened in the companion. Confirm there to upload images and create your draft.") +
+          (article.bundle.cover && !status.capabilities?.includes("cover")
+            ? " This companion version cannot set the cover: update it, or set the cover in X."
+            : ""),
       );
     } catch (error) {
       setNotice(
@@ -587,6 +677,29 @@ export default function App() {
       setSending(false);
     }
   }
+  const draftProgress =
+    draftJob?.progress && draftJob.progress.total > 0
+      ? ` (${draftJob.progress.done}/${draftJob.progress.total} images)`
+      : "";
+  const draftMessage = !draftJob
+    ? ""
+    : draftJob.status === "completed"
+      ? "Draft created in X. " + (draftJob.warning ?? "Review and publish it there.")
+      : draftJob.status === "failed"
+        ? (draftJob.error ?? "The draft could not be created.")
+        : draftJob.status === "uncertain"
+          ? (draftJob.error ?? "The result is unknown.") + " Resolve it in the companion review."
+          : draftJob.status === "missing"
+            ? "This staged article was discarded in the companion."
+            : draftJob.status === "uploading"
+              ? `Uploading images to X${draftProgress}…`
+              : draftJob.status === "creating"
+                ? "Opening X Articles…"
+                : draftJob.auto
+                  ? "Starting draft creation…"
+                  : "Waiting for your confirmation in the companion review.";
+  const firewallLines =
+    draftJob?.errorCode === "X_FIREWALL_BLOCKED" ? shellPipeLines(markdown) : [];
   function jump(line: number) {
     setHighlightedLine(undefined);
     setMobileView("write");
@@ -681,7 +794,7 @@ export default function App() {
             onClick={handoff}
             disabled={!ready || sending}
             className="button-outline"
-            title={errors.length ? "Resolve the issues shown below the article title" : updating ? "Preparing the article…" : !hasContent ? "Add article content first" : "Open companion review to create a draft"}
+            title={errors.length ? "Resolve the issues shown below the article title" : updating ? "Preparing the article…" : !hasContent ? "Add article content first" : autoCreate ? "Create the draft in X now (companion setting)" : "Open companion review to create a draft"}
           >
             {sending ? (
               <LoaderCircle className="spin" size={14} />
@@ -699,6 +812,43 @@ export default function App() {
         </div>
       </div>
 
+      {draftJob && (
+        <div
+          className={"draft-status draft-" + draftJob.status}
+          id="draft-status"
+          role="status"
+          data-status={draftJob.status}
+          data-job-id={draftJob.jobId}
+          data-draft-url={draftJob.draftUrl}
+          data-error-code={draftJob.errorCode}
+        >
+          {["pending", "creating", "uploading"].includes(draftJob.status) ? (
+            <LoaderCircle className="spin" size={14} />
+          ) : draftJob.status === "completed" ? (
+            <Check size={14} />
+          ) : (
+            <CircleAlert size={14} />
+          )}
+          <span>{draftMessage}</span>
+          {draftJob.draftUrl && (
+            <a href={draftJob.draftUrl} target="_blank" rel="noopener noreferrer">
+              Open draft in X <ArrowRight size={13} />
+            </a>
+          )}
+          {firewallLines.map((line) => (
+            <button key={line} onClick={() => jump(line)}>
+              Line {line} · Go to line
+            </button>
+          ))}
+          <button
+            className="draft-status-close"
+            aria-label="Dismiss draft status"
+            onClick={() => setDraftJob(null)}
+          >
+            <X size={15} />
+          </button>
+        </div>
+      )}
       {STANDALONE && (
         <div className="workflow-strip">
           <span>
@@ -956,6 +1106,43 @@ export default function App() {
               </div>
             ) : (
               <article className="preview-paper">
+                {coverSource && (
+                  <figure
+                    className="xp-fig editable-image preview-cover"
+                    id="article-cover"
+                    data-state={coverState}
+                  >
+                    {coverAsset ? (
+                      <img src={coverAsset.url} alt="Article cover" />
+                    ) : (
+                      <div className="preview-cover-empty">
+                        {coverProblem ?? "Preparing cover…"}
+                      </div>
+                    )}
+                    <figcaption className="preview-image-tools">
+                      <span>
+                        Cover
+                        {coverAsset &&
+                          ` · ${coverAsset.width} × ${coverAsset.height}`}
+                        {coverSource !== COVER_KEY && ` · ${coverSource}`}
+                        {coverAsset &&
+                          Math.abs(coverAsset.width / coverAsset.height - 2.5) > 0.05 &&
+                          " · X crops covers to about 5:2; adjust the crop in X"}
+                      </span>
+                      <div>
+                        <button onClick={() => coverInput.current?.click()}>
+                          <ImageIcon size={13} />{" "}
+                          {coverAsset ? "Replace cover" : "Choose cover"}
+                        </button>
+                        {files.has(COVER_KEY) && (
+                          <button onClick={() => chooseCover(undefined)}>
+                            <X size={13} /> Remove cover
+                          </button>
+                        )}
+                      </div>
+                    </figcaption>
+                  </figure>
+                )}
                 <ArticlePreview
                   html={preview}
                   assets={plan.assets}
@@ -1005,7 +1192,9 @@ export default function App() {
         <span>
           {STANDALONE
             ? "Works offline · X connection needs the full app"
-            : "Saved on this device · X draft reviewed before creation"}
+            : autoCreate
+              ? "Saved on this device · X draft created without review (companion setting)"
+              : "Saved on this device · X draft reviewed before creation"}
         </span>
         {!STANDALONE && (
           <a href="/privacy" target="_blank" rel="noopener noreferrer">
@@ -1033,7 +1222,8 @@ export default function App() {
       <input
         ref={markdownInput}
         type="file"
-        accept=".md,.markdown,.mdown,text/markdown"
+        accept=".md,.markdown,.mdown,text/markdown,image/png,image/jpeg,image/webp"
+        multiple
         aria-label="Import Markdown file"
         hidden
         onChange={(event) => {
@@ -1062,6 +1252,18 @@ export default function App() {
         hidden
         onChange={(event) => {
           void importFiles(event.target.files, true);
+          event.target.value = "";
+        }}
+      />
+      <input
+        ref={coverInput}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        aria-label="Choose cover image"
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) chooseCover(file);
           event.target.value = "";
         }}
       />
@@ -1108,7 +1310,8 @@ export default function App() {
                     The .md file contains image paths. Your browser needs you to
                     select the image folder separately. Choose that folder or a
                     parent folder; only images referenced by this article are
-                    attached.
+                    attached. Import Markdown also accepts the .md file and its
+                    images selected together.
                   </p>
                   <span>
                     Example path:{" "}
@@ -1145,6 +1348,48 @@ export default function App() {
                   >
                     <FolderOpen size={15} /> Match image folder
                   </button>
+                </div>
+              </div>
+              <div
+                className={"asset-card " + (coverProblem ? "has-error" : "")}
+                id="asset-cover"
+              >
+                <div className="asset-top">
+                  <div className="asset-thumbnail">
+                    {coverAsset ? (
+                      <img src={coverAsset.url} alt="Cover" />
+                    ) : (
+                      <ImageIcon size={24} />
+                    )}
+                  </div>
+                  <div className="asset-details">
+                    <strong>Cover</strong>
+                    <span className="asset-path">
+                      {!coverSource
+                        ? "Optional · shown above the title in X"
+                        : coverSource === COVER_KEY
+                          ? "Chosen here"
+                          : coverSource}
+                    </span>
+                    <span className={"asset-state " + (coverProblem ? "error" : "")}>
+                      {coverProblem ??
+                        (coverAsset
+                          ? coverAsset.width + " × " + coverAsset.height + " · ready"
+                          : coverSource
+                            ? "Preparing…"
+                            : "X shows covers at about 5:2. Or add cover: path to your frontmatter.")}
+                    </span>
+                  </div>
+                </div>
+                <div className="asset-actions">
+                  <button onClick={() => coverInput.current?.click()}>
+                    {coverSource ? "Replace cover" : "Choose cover"}
+                  </button>
+                  {files.has(COVER_KEY) && (
+                    <button onClick={() => chooseCover(undefined)}>
+                      Remove cover
+                    </button>
+                  )}
                 </div>
               </div>
               {plan.assets.map((asset) => {
@@ -1430,8 +1675,8 @@ export default function App() {
                 </p>
                 <p>
                   Remote images need CORS permission or a local replacement.
-                  Covers, ALT descriptions, formulas, GIF, SVG, and video are
-                  not implemented.
+                  ALT descriptions, formulas, GIF, SVG, and video are not
+                  implemented. Covers need companion 0.1.2 or later.
                 </p>
                 <button
                   className="text-link"

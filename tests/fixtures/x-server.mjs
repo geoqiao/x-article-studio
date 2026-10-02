@@ -5,7 +5,9 @@ import { join } from 'node:path';
 
 const certificateDirectory = process.argv[2];
 if (!certificateDirectory) throw new Error('Pass the temporary certificate directory.');
-const empty = () => ({ documents: 0, media: 0, drafts: 0, titles: [], unexpected: [] });
+const empty = () => ({ documents: 0, media: 0, drafts: 0, titles: [], covers: [], blocked: 0, unexpected: [] });
+// What X's firewall returns for a create request whose body it refuses.
+const FIREWALL_PAGE = '<!DOCTYPE html><html><head><title>Attention Required! | Cloudflare</title></head><body><h1>Sorry, you have been blocked</h1><p>Cloudflare Ray ID: fixture</p></body></html>';
 let state = empty();
 const server = https.createServer({
   key: readFileSync(join(certificateDirectory, 'key.pem')),
@@ -38,10 +40,22 @@ const server = https.createServer({
     return json({});
   }
   if (request.method === 'POST' && /^\/i\/api\/graphql\/[^/]+\/ArticleEntityDraftCreate$/.test(url.pathname)) {
-    const body = JSON.parse(Buffer.concat(chunks).toString());
+    const raw = Buffer.concat(chunks).toString();
+    // The one body pattern observed to trigger the firewall: a command piped into a shell.
+    if (/\|\s*sh\b/.test(raw)) {
+      state.blocked++;
+      response.writeHead(403, { 'content-type': 'text/html' });
+      return response.end(FIREWALL_PAGE);
+    }
+    const body = JSON.parse(raw);
     state.drafts++;
     state.titles.push(body.variables?.title);
     return json({ data: { articleentity_create_draft: { article_entity_results: { result: { rest_id: `fixture-draft-${state.drafts}` } } } } });
+  }
+  if (request.method === 'POST' && /^\/i\/api\/graphql\/[^/]+\/ArticleEntityUpdateCoverMedia$/.test(url.pathname)) {
+    const body = JSON.parse(Buffer.concat(chunks).toString());
+    state.covers.push([body.variables?.articleEntityId, body.variables?.coverMedia?.media_id]);
+    return json({ data: { articleentity_update_cover_media: { article_entity_results: { result: { rest_id: body.variables?.articleEntityId } } } } });
   }
   state.unexpected.push(`${request.method} ${url.pathname}`);
   return json({ error: 'Unexpected fixture request' }, 404);

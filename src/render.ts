@@ -14,7 +14,10 @@ export async function renderDiagram(code: string): Promise<Blob> {
   await previous;
   try {
     renderer ??= import('mermaid').then(({ default: mermaid }) => {
-      mermaid.initialize({ ...MERMAID_INIT_CONFIG, maxTextSize: 30_000, maxEdges: 500, suppressErrorRendering: true });
+      // Mermaid 11 reads the root htmlLabels (default true) before Kaitox's deprecated
+      // flowchart.htmlLabels. HTML labels are sized with wrapping, then rasterized as
+      // one unwrapped SVG line that overflows its node and is clipped at the canvas edge.
+      mermaid.initialize({ ...MERMAID_INIT_CONFIG, htmlLabels: false, maxTextSize: 30_000, maxEdges: 500, suppressErrorRendering: true });
       return mermaid;
     });
     await document.fonts.ready;

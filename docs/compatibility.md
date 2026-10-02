@@ -44,7 +44,7 @@ No manual screenshots are needed for supported tables or Mermaid. Automatic plac
 | LaTeX / math fences / display formulas | Warning | Source is retained as text/code; use an image for rendered notation. Official X API supports LaTeX; this adapter does not map it |
 | Single-dollar inline formulas | Plain text | Not interpreted as math; manually convert if intended as a formula |
 | GIF, SVG, video | Not implemented | Convert to supported body image types, or add separately in X |
-| Cover frontmatter | Warning | Not uploaded by this bridge; select cover in X |
+| Cover (frontmatter `cover:` or chosen under Images) | Uploaded and set after creation | Companion 0.1.2+. PNG/JPEG/WebP; a cover X refuses leaves the draft in place with a warning |
 | Markdown image ALT labels | Source only | Kept in source/export; not set as X accessibility descriptions |
 | Custom CSS/layout, interactive Mermaid | Cannot transfer arbitrary behavior | X controls its renderer; exported PNGs cannot execute scripts |
 
