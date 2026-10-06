@@ -2,7 +2,7 @@
 
 Status: **prototype** · Started: **2026-09-15**
 
-Live app: <https://md2xarticle.com> · Private repository: <https://github.com/geoqiao/x-article-studio>
+Live app: <https://md2xarticle.com> · Repository: <https://github.com/geoqiao/x-article-studio>
 
 A Markdown-to-X-Articles web app inspired by MD2X’s editing workflow and built on Kaitox’s MIT-licensed article converter. It prepares ordinary images, renders Mermaid to PNG, preserves native tables (or renders them to PNG), and passes a complete document to a small Chromium companion.
 

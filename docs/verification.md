@@ -29,7 +29,7 @@ The unit suite exercises source order, image placements, reference definitions, 
 
 ## Production deployment
 
-The private repository is `geoqiao/x-article-studio`; its `main` branch is connected directly to Cloudflare Workers Builds. The first hosted build (`b519bbfb-6380-4996-9a88-154214ececc8`) cloned the repository, ran its test/build commands, and deployed Worker version `4d6c8635-17af-476f-a405-a827789f6a0a` on 2026-09-15. The initial source commit is `f592dc0`. Build credentials are managed by Cloudflare, outside this repository.
+The repository is `geoqiao/x-article-studio`; its `main` branch is connected directly to Cloudflare Workers Builds. The first hosted build (`b519bbfb-6380-4996-9a88-154214ececc8`) cloned the repository, ran its test/build commands, and deployed Worker version `4d6c8635-17af-476f-a405-a827789f6a0a` on 2026-09-15. The initial source commit is `f592dc0`. Build credentials are managed by Cloudflare, outside this repository.
 
 Live browser checks used the normal HTTPS URL. The machine's shell resolver temporarily retained the earlier nonexistent-domain response; HTTP header checks used the domain's resolved Cloudflare IP with `curl --resolve`, preserving the hostname and normal TLS verification. No host-file or system DNS changes were made.
 
