@@ -1,6 +1,9 @@
 import type { LocalAssetMap } from './types';
 
+/** Largest image handed to X; bigger pictures are downscaled to fit. */
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+/** Largest source file accepted before downscaling. */
+export const MAX_SOURCE_BYTES = 40 * 1024 * 1024;
 export const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 /** Attachment key and bundle source for a cover chosen in the app instead of frontmatter. */
 export const COVER_KEY = 'studio-cover://cover';
@@ -73,7 +76,7 @@ export async function fetchImageFile(source: string, signal?: AbortSignal): Prom
   try {
     const response = await fetch(url, { mode: 'cors', credentials: 'omit', redirect: 'error', signal: controller.signal, referrerPolicy: 'no-referrer' });
     if (!response.ok || !response.body) throw new Error(`Image server returned HTTP ${response.status}.`);
-    if (Number(response.headers.get('content-length')) > MAX_IMAGE_BYTES) throw new Error('Image is larger than 5 MiB.');
+    if (Number(response.headers.get('content-length')) > MAX_SOURCE_BYTES) throw new Error('Image is larger than 40 MiB.');
     const reader = response.body.getReader();
     const chunks: Uint8Array<ArrayBuffer>[] = [];
     let size = 0;
@@ -81,7 +84,7 @@ export async function fetchImageFile(source: string, signal?: AbortSignal): Prom
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > MAX_IMAGE_BYTES) { await reader.cancel(); throw new Error('Image is larger than 5 MiB.'); }
+      if (size > MAX_SOURCE_BYTES) { await reader.cancel(); throw new Error('Image is larger than 40 MiB.'); }
       chunks.push(new Uint8Array(value));
     }
     return new Blob(chunks, { type: response.headers.get('content-type')?.split(';')[0] || '' });
@@ -92,13 +95,16 @@ export async function fetchImageFile(source: string, signal?: AbortSignal): Prom
   } finally { clearTimeout(timeout); signal?.removeEventListener('abort', abort); }
 }
 
+/** The real image type from the bytes; file names and declared types are not trusted. */
 export async function sniffImage(blob: Blob): Promise<string> {
-  if (blob.size > MAX_IMAGE_BYTES) throw new Error('Image exceeds this version’s 5 MiB limit. Resize it before attaching.');
   const b = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
   if (b.length >= 8 && [137, 80, 78, 71, 13, 10, 26, 10].every((v, i) => b[i] === v)) return 'image/png';
   if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
   if (String.fromCharCode(...b.slice(0, 4)) === 'RIFF' && String.fromCharCode(...b.slice(8, 12)) === 'WEBP') return 'image/webp';
-  throw new Error('Attach a PNG, JPEG, or WebP image. GIF, SVG, and other formats are not supported in this version.');
+  if (String.fromCharCode(...b.slice(0, 3)) === 'GIF') throw new Error('GIF images are not supported. Export a PNG or JPEG frame instead.');
+  const head = await blob.slice(0, 4096).text();
+  if (/^\uFEFF?\s*(?:<\?xml[^>]*>\s*)?(?:<!--[\s\S]*?-->\s*)*(?:<!DOCTYPE[^>]*>\s*)?<svg[\s>]/i.test(head)) return 'image/svg+xml';
+  throw new Error('Attach a PNG, JPEG, WebP, or SVG image. Other formats are not supported in this version.');
 }
 
 export async function sha256(blob: Blob): Promise<string> {

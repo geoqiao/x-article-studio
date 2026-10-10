@@ -1,6 +1,7 @@
+import type { RememberedHandles } from './filesystem';
 import type { LocalAssetMap, TableMode } from './types';
 
-export type SavedDraft = { markdown: string; title: string; tableMode: TableMode; documentPath: string; files: Array<[string, File]> };
+export type SavedDraft = { markdown: string; title: string; tableMode: TableMode; documentPath: string; files: Array<[string, File]>; handles?: RememberedHandles };
 
 async function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -22,12 +23,15 @@ export async function loadDraft(): Promise<SavedDraft | undefined> {
   } finally { db.close(); }
 }
 
-export async function saveDraft(draft: Omit<SavedDraft, 'files'>, files: LocalAssetMap): Promise<void> {
+export async function saveDraft(draft: Omit<SavedDraft, 'files' | 'handles'>, files: LocalAssetMap, handles: RememberedHandles = {}): Promise<void> {
   const db = await openDatabase();
   try {
     await new Promise<void>((resolve, reject) => {
       const transaction = db.transaction('draft', 'readwrite');
-      transaction.objectStore('draft').put({ ...draft, files: [...files] }, 'current');
+      const store = transaction.objectStore('draft');
+      const record = { ...draft, files: [...files] };
+      // File handles are stored where the browser can clone them; otherwise save the rest.
+      try { store.put({ ...record, handles }, 'current'); } catch { store.put(record, 'current'); }
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
       transaction.onabort = () => reject(transaction.error);

@@ -17,6 +17,7 @@ import {
   Monitor,
   Network,
   Plus,
+  RefreshCw,
   Smartphone,
   Table2,
   Undo2,
@@ -31,15 +32,30 @@ import {
   type AssetCache,
 } from "./prepare";
 import { exportDraftBackup } from "./backup";
-import { simplifyNestedLists } from "./normalize";
+import { convertFootnotesToEndnotes, simplifyNestedLists } from "./normalize";
 import { MarkdownEditor } from "./MarkdownEditor";
 import {
   COVER_KEY,
   downloadBlob,
-  MAX_TOTAL_BYTES,
+  MAX_SOURCE_BYTES,
   normalizePath,
   resolveLocalFile,
 } from "./files";
+import {
+  dropHandles,
+  ensurePermission,
+  hasPermission,
+  IMAGE_FILE,
+  MARKDOWN_FILE,
+  pickFiles,
+  pickFolder,
+  readFolderImages,
+  supportsFileSystemAccess,
+  type DirectoryHandle,
+  type FileHandle,
+  type RememberedHandles,
+} from "./filesystem";
+import { loadSettings, saveSettings, type Settings } from "./settings";
 import {
   getBridgeStatus,
   getDraftJob,
@@ -89,6 +105,11 @@ export default function App() {
     new Map(),
   );
   const [documentPath, setDocumentPath] = useState("");
+  // Opened through the File System Access API; lets Reload from file skip the picker.
+  const [handles, setHandles] = useState<RememberedHandles>({});
+  const [fileChanged, setFileChanged] = useState(false);
+  const loadedModified = useRef(0);
+  const [settings, setSettings] = useState<Settings>(() => loadSettings());
   const [highlightedLine, setHighlightedLine] = useState<number>();
   const [booting, setBooting] = useState(true);
   const [saving, setSaving] = useState("Saved locally");
@@ -128,8 +149,8 @@ export default function App() {
   const activeAssets = useRef<PreparedArticle | undefined>(undefined);
   const importSequence = useRef(0);
   const plan = useMemo(
-    () => createPlan(markdown, tableMode, title, documentPath),
-    [markdown, tableMode, title, documentPath],
+    () => createPlan(markdown, tableMode, title, documentPath, settings),
+    [markdown, tableMode, title, documentPath, settings],
   );
   const current =
     prepared?.article.plan === plan &&
@@ -146,6 +167,9 @@ export default function App() {
   const canExport = hasContent && !booting && !exporting;
   const simplifiedLists = useMemo(() => plan.issues.some(issue => issue.id === "nested-list")
     ? simplifyNestedLists(markdown) : markdown, [markdown, plan]);
+  const endnotes = useMemo(() => plan.issues.some(issue => issue.id === "footnote")
+    ? convertFootnotesToEndnotes(markdown) : markdown, [markdown, plan]);
+  const fileSystemAccess = supportsFileSystemAccess();
   const updating =
     booting || (hasContent && !renderError && (busy || !current));
   const previewAssets = useMemo(() => {
@@ -204,6 +228,7 @@ export default function App() {
           setTableMode(saved.tableMode === "image" ? "image" : "native");
           setDocumentPath(saved.documentPath || "");
           setFiles(new Map(saved.files || []));
+          if (saved.handles && typeof saved.handles === "object") setHandles(saved.handles);
         } else {
           const sample = await createSampleImage();
           if (!cancelled) setFiles(new Map([["assets/workflow.png", sample]]));
@@ -303,12 +328,30 @@ export default function App() {
     if (booting) return;
     setSaving("Saving…");
     const timer = setTimeout(() => {
-      saveDraft({ markdown, title, tableMode, documentPath }, files)
+      saveDraft({ markdown, title, tableMode, documentPath }, files, handles)
         .then(() => setSaving("Saved locally"))
         .catch(() => setSaving("Not saved · download your Markdown"));
     }, 700);
     return () => clearTimeout(timer);
-  }, [markdown, title, tableMode, files, documentPath, booting]);
+  }, [markdown, title, tableMode, files, documentPath, handles, booting]);
+  useEffect(() => saveSettings(settings), [settings]);
+  // While the file is readable without a prompt, notice edits made in another editor.
+  const documentHandle = handles.document;
+  useEffect(() => {
+    if (!documentHandle) { setFileChanged(false); return; }
+    let cancelled = false;
+    const check = async () => {
+      if (document.hidden || !(await hasPermission(documentHandle))) return;
+      try {
+        const file = await documentHandle.getFile();
+        if (!cancelled && loadedModified.current) setFileChanged(file.lastModified > loadedModified.current);
+      } catch { /* moved or deleted: Reload reports it */ }
+    };
+    void check();
+    const timer = setInterval(check, 4_000);
+    document.addEventListener("visibilitychange", check);
+    return () => { cancelled = true; clearInterval(timer); document.removeEventListener("visibilitychange", check); };
+  }, [documentHandle]);
   useEffect(() => {
     if (modal && !dialog.current?.open) dialog.current?.showModal();
     if (!modal && dialog.current?.open) dialog.current.close();
@@ -355,6 +398,7 @@ export default function App() {
     selected: FileList | File[] | null,
     insertImages = false,
     matchFolder = false,
+    picked: RememberedHandles = {},
   ) {
     if (!selected?.length) return;
     const sequence = ++importSequence.current;
@@ -362,10 +406,8 @@ export default function App() {
       const incoming = [...selected];
       const docs = matchFolder
         ? []
-        : incoming.filter((file) => /\.(md|markdown|mdown)$/i.test(file.name));
-      const images = incoming.filter((file) =>
-        /\.(png|jpe?g|webp)$/i.test(file.name),
-      );
+        : incoming.filter((file) => MARKDOWN_FILE.test(file.name));
+      const images = incoming.filter((file) => IMAGE_FILE.test(file.name));
       let path = documentPath;
       let text: string | undefined;
       if (docs.length === 1) {
@@ -377,7 +419,15 @@ export default function App() {
         path = normalizePath(docs[0].webkitRelativePath || docs[0].name);
       }
       if (sequence !== importSequence.current) return;
-      const target = text === undefined ? plan : createPlan(text, tableMode, "", path);
+      const target = text === undefined ? plan : createPlan(text, tableMode, "", path, settings);
+      // A remembered image folder that is still readable supplies this article's images too.
+      const folder = picked.folder ?? (text !== undefined ? handles.folder : undefined);
+      let fromFolder = matchFolder;
+      if (text !== undefined && !images.length && folder && (await hasPermission(folder))) {
+        for (const [key, file] of await readFolderImages(folder)) images.push(Object.assign(file, { folderPath: key }));
+        fromFolder = images.length > 0;
+      }
+      if (sequence !== importSequence.current) return;
       const sources = target.assets
         .filter((asset) => asset.kind === "image")
         .map((asset) => asset.source);
@@ -388,7 +438,7 @@ export default function App() {
           : sources;
       const incomingImages = new Map(
         images.map((file) => [
-          normalizePath(file.webkitRelativePath || file.name),
+          normalizePath((file as File & { folderPath?: string }).folderPath || file.webkitRelativePath || file.name),
           file,
         ]),
       );
@@ -425,17 +475,18 @@ export default function App() {
         text === undefined ? new Map(files) : new Map();
       const matchedFiles = new Set(matches.values());
       for (const [key, file] of incomingImages)
-        if (!matchFolder || matchedFiles.has(file)) merged.set(key, file);
+        if (!fromFolder || matchedFiles.has(file)) merged.set(key, file);
       // Selecting an image folder also repairs an earlier incorrect replacement.
       for (const [source, file] of matches) merged.set(source, file);
+      // Oversized pictures are downscaled during preparation; only refuse absurd selections.
       if (
         [...new Set(merged.values())].reduce(
           (sum, file) => sum + file.size,
           0,
-        ) > MAX_TOTAL_BYTES
+        ) > MAX_SOURCE_BYTES * 4
       )
         throw new Error(
-          "Images exceed 20 MiB. Choose fewer files or resize them.",
+          "Selected images total more than 160 MiB. Choose fewer files or resize them.",
         );
       if (images.length) {
         setFiles(merged);
@@ -445,6 +496,7 @@ export default function App() {
           return next;
         });
       }
+      if (picked.folder) setHandles((old) => ({ ...old, folder: picked.folder }));
       if (matchFolder) {
         setNotice(
           `Matched ${matches.size} of ${wanted.length} article images. ` +
@@ -463,6 +515,9 @@ export default function App() {
         setMarkdown(text);
         setTitle("");
         setDocumentPath(path);
+        setHandles((old) => ({ ...old, document: picked.document }));
+        loadedModified.current = picked.document ? docs[0].lastModified : 0;
+        setFileChanged(false);
         setMobileView("write");
         setModal(null);
         setNotice(
@@ -471,7 +526,9 @@ export default function App() {
             ". " +
             (wanted.length > matches.size
               ? "Select the image folder for this import. Previous image choices were cleared."
-              : "The preview updates automatically."),
+              : fromFolder && !matchFolder && folder && matches.size
+                ? `Images matched from the remembered folder “${folder.name}”.`
+                : "The preview updates automatically."),
         );
       } else if (insertImages) {
         const coverFile = target.cover && matches.get(target.cover.source);
@@ -526,6 +583,85 @@ export default function App() {
         error instanceof Error ? error.message : "Could not open these files.",
       );
     }
+  }
+
+  /** Import Markdown: the native picker remembers the file where the browser allows it. */
+  async function openFiles() {
+    if (!fileSystemAccess) { markdownInput.current?.click(); return; }
+    try {
+      const result = await pickFiles();
+      if (result) await importFiles(result.files, false, false, { document: result.document });
+    } catch {
+      markdownInput.current?.click();
+    }
+  }
+
+  async function matchFolderFromDisk() {
+    if (!fileSystemAccess) { folderInput.current?.click(); return; }
+    try {
+      const folder = await pickFolder();
+      if (!folder) return;
+      const images = [...(await readFolderImages(folder))].map(([key, file]) => Object.assign(file, { folderPath: key }));
+      if (!images.length) { setNotice(`No PNG, JPEG, WebP or SVG files found in “${folder.name}”.`); return; }
+      await importFiles(images, false, true, { folder });
+    } catch {
+      folderInput.current?.click();
+    }
+  }
+
+  /** Re-read the opened .md and re-match the remembered folder; edits made here stay. */
+  async function reloadFromFile() {
+    const handle = handles.document;
+    if (!handle) return;
+    const sequence = ++importSequence.current;
+    try {
+      if (!(await ensurePermission(handle))) { setNotice("Allow file access to reload, or import the file again."); return; }
+      const file = await handle.getFile();
+      if (file.size > MAX_MARKDOWN_LENGTH * 4) throw new Error("This Markdown file is too large.");
+      const text = await file.text();
+      if (text.length > MAX_MARKDOWN_LENGTH) throw new Error("Markdown is limited to 200,000 characters.");
+      const folder = handles.folder;
+      const folderImages = folder && (await hasPermission(folder)) ? await readFolderImages(folder) : new Map<string, File>();
+      if (sequence !== importSequence.current) return;
+      const next = createPlan(text, tableMode, title, documentPath, settings);
+      const sources = next.assets.filter((asset) => asset.kind === "image").map((asset) => asset.source);
+      const wanted = next.cover && !/^https?:\/\//i.test(next.cover.source) ? [...sources, next.cover.source] : sources;
+      const merged: LocalAssetMap = new Map(files);
+      let matched = 0;
+      for (const source of wanted) {
+        if (files.has(source)) continue;
+        try {
+          const found = resolveLocalFile(source, folderImages, documentPath, sources);
+          if (found) { merged.set(source, found); matched++; }
+        } catch { /* ambiguous: the Images panel explains */ }
+      }
+      assetCache.current.clear();
+      setHighlightedLine(undefined);
+      setDraftJob(null);
+      setMarkdown(text);
+      if (matched) setFiles(merged);
+      loadedModified.current = file.lastModified;
+      setFileChanged(false);
+      setNotice(`Reloaded ${file.name} from disk.` + (matched ? ` Matched ${matched} new image${matched === 1 ? "" : "s"}.` : ""));
+    } catch (error) {
+      if (sequence !== importSequence.current) return;
+      setNotice(error instanceof Error ? error.message : "Could not reload the file. Import it again.");
+    }
+  }
+
+  /** Dropped items: remember the Markdown handle; a dropped folder matches images. */
+  async function dropped(transfer: DataTransfer) {
+    const pending = fileSystemAccess ? dropHandles(transfer) : Promise.resolve([] as FileSystemHandle[]);
+    const dropFiles = [...transfer.files];
+    const found = await pending;
+    const folder = found.find((handle) => handle.kind === "directory") as DirectoryHandle | undefined;
+    if (folder) {
+      const images = [...(await readFolderImages(folder))].map(([key, file]) => Object.assign(file, { folderPath: key }));
+      await importFiles(images, false, true, { folder });
+      return;
+    }
+    const document = found.find((handle) => handle.kind === "file" && MARKDOWN_FILE.test(handle.name)) as FileHandle | undefined;
+    await importFiles(dropFiles, true, false, { document });
   }
 
   function clearPreparedArticle() {
@@ -732,6 +868,9 @@ export default function App() {
     setTitle("");
     setTableMode("native");
     setDocumentPath("");
+    setHandles((old) => ({ folder: old.folder }));
+    loadedModified.current = 0;
+    setFileChanged(false);
     setMobileView("write");
     setMarkdown(example ? SAMPLE : "");
     setFiles(nextFiles);
@@ -758,10 +897,7 @@ export default function App() {
           <button onClick={() => setModal("new")} disabled={booting}>
             <Plus size={15} /> New
           </button>
-          <button
-            onClick={() => markdownInput.current?.click()}
-            disabled={booting}
-          >
+          <button onClick={() => void openFiles()} disabled={booting}>
             <UploadIcon /> Import Markdown
           </button>
           <button
@@ -888,6 +1024,16 @@ export default function App() {
               <Code2 size={15} /> Markdown
             </strong>
             <span>{documentPath.split("/").pop() || "Untitled.md"}</span>
+            {handles.document && (
+              <button
+                className={"reload-file " + (fileChanged ? "needs-attention" : "")}
+                onClick={() => void reloadFromFile()}
+                title={fileChanged ? "This file changed on disk. Reload it; your image choices stay." : "Re-read this file from disk; your image choices stay."}
+                aria-label="Reload from file"
+              >
+                <RefreshCw size={14} /> {fileChanged ? "Changed on disk · Reload" : "Reload"}
+              </button>
+            )}
             <button
               onClick={saveMarkdown}
               title="Download your original Markdown"
@@ -980,7 +1126,7 @@ export default function App() {
             onDrop={(event) => {
               if (event.dataTransfer.files.length) {
                 event.preventDefault();
-                void importFiles(event.dataTransfer.files, true);
+                void dropped(event.dataTransfer);
               }
             }}
             onPaste={(event) => {
@@ -994,6 +1140,12 @@ export default function App() {
             <span>
               {plan.wordCount.toLocaleString()} words ·{" "}
               {markdown.length.toLocaleString()} characters
+              {plan.frontmatter && (
+                <span className="frontmatter-note" title="YAML frontmatter is never sent to X">
+                  · Frontmatter: {plan.frontmatter.used.length ? "used " + plan.frontmatter.used.join(", ") : "no title or cover"}
+                  {plan.frontmatter.count > plan.frontmatter.used.length && `, ignored ${plan.frontmatter.count - plan.frontmatter.used.length} field${plan.frontmatter.count - plan.frontmatter.used.length === 1 ? "" : "s"}`}
+                </span>
+              )}
             </span>
             <span className="save-status">{booting ? "Opening…" : saving}</span>
           </div>
@@ -1074,18 +1226,23 @@ export default function App() {
                         {issue.id === "title-format" ? <button onClick={() => titleInput.current?.focus()}>Edit title</button>
                           : <button onClick={() => jump(issue.line)}>Line {issue.line} · {asset && asset.kind !== "image" ? "Edit source" : "Go to line"}</button>}
                         {asset?.kind === "image" && <button onClick={() => showAsset(asset.id)}>Add / fix images</button>}
-                        {issue.id === "nested-list" && simplifiedLists !== markdown &&
+                        {issue.id === "nested-list" && simplifiedLists !== markdown && errors.findIndex(e => e.id === "nested-list") === index &&
                           <button onClick={() => {
                             setMarkdown(simplifiedLists);
                             setNotice("Converted simple nested lists to one level. Review the updated preview.");
                           }}>Convert to one level</button>}
+                        {issue.id === "footnote" && endnotes !== markdown && errors.findIndex(e => e.id === "footnote") === index &&
+                          <button onClick={() => {
+                            setMarkdown(endnotes);
+                            setNotice("Footnotes converted to numbered endnotes after a divider at the end. Review the updated preview.");
+                          }}>Convert to endnotes</button>}
                       </div>
                     </div>;
                   })}
                   {renderError && <p>{renderError}</p>}
                 </div>
                 <div className="issue-actions">
-                  {missingImages.length > 0 && <button onClick={() => folderInput.current?.click()}><FolderOpen size={14} /> Match image folder</button>}
+                  {missingImages.length > 0 && <button onClick={() => void matchFolderFromDisk()}><FolderOpen size={14} /> Match image folder</button>}
                   {(assetErrors.some(error => error.reason !== "missing-file") || renderError) && <button onClick={() => { assetCache.current.clear(); setRetry(value => value + 1); }}>Retry</button>}
                 </div>
               </div>
@@ -1161,9 +1318,16 @@ export default function App() {
                 {warnings.length === 1 ? "" : "s"}
               </summary>
               {warnings.map((issue, index) => (
-                <button key={index} onClick={() => jump(issue.line)}>
-                  {issue.message} <span>Line {issue.line}</span>
-                </button>
+                <div className="format-note" key={index}>
+                  <button onClick={() => jump(issue.line)}>
+                    {issue.message} <span>Line {issue.line}</span>
+                  </button>
+                  {issue.id === "wikilink" && (
+                    <button className="note-action" onClick={() => setSettings({ ...settings, warnWikilinks: false })}>
+                      Turn off this check
+                    </button>
+                  )}
+                </div>
               ))}
             </details>
           )}
@@ -1222,7 +1386,7 @@ export default function App() {
       <input
         ref={markdownInput}
         type="file"
-        accept=".md,.markdown,.mdown,text/markdown,image/png,image/jpeg,image/webp"
+        accept=".md,.markdown,.mdown,text/markdown,image/png,image/jpeg,image/webp,image/svg+xml,.svg"
         multiple
         aria-label="Import Markdown file"
         hidden
@@ -1246,7 +1410,7 @@ export default function App() {
       <input
         ref={imageInput}
         type="file"
-        accept="image/png,image/jpeg,image/webp"
+        accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
         multiple
         aria-label="Add image files"
         hidden
@@ -1258,7 +1422,7 @@ export default function App() {
       <input
         ref={coverInput}
         type="file"
-        accept="image/png,image/jpeg,image/webp"
+        accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
         aria-label="Choose cover image"
         hidden
         onChange={(event) => {
@@ -1312,6 +1476,7 @@ export default function App() {
                     parent folder; only images referenced by this article are
                     attached. Import Markdown also accepts the .md file and its
                     images selected together.
+                    {fileSystemAccess && " This browser remembers the folder, so the next article from the same place matches automatically."}
                   </p>
                   <span>
                     Example path:{" "}
@@ -1334,7 +1499,7 @@ export default function App() {
               >
                 <ImageIcon size={25} />
                 <strong>Drop images here</strong>
-                <span>PNG, JPEG, WebP · up to 5 MiB each</span>
+                <span>PNG, JPEG, WebP, SVG · larger than 5 MiB is downscaled</span>
                 <div>
                   <button
                     className="button-primary"
@@ -1344,9 +1509,9 @@ export default function App() {
                   </button>
                   <button
                     className="button-outline"
-                    onClick={() => folderInput.current?.click()}
+                    onClick={() => void matchFolderFromDisk()}
                   >
-                    <FolderOpen size={15} /> Match image folder
+                    <FolderOpen size={15} /> {handles.folder ? `Match image folder (last: ${handles.folder.name})` : "Match image folder"}
                   </button>
                 </div>
               </div>
@@ -1446,7 +1611,7 @@ export default function App() {
                           <input
                             aria-label={"Replace " + asset.label}
                             type="file"
-                            accept="image/png,image/jpeg,image/webp"
+                            accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
                             hidden
                             onChange={(event) => {
                               const file = event.target.files?.[0];
@@ -1665,6 +1830,18 @@ export default function App() {
                 this browser. Export ZIP includes Markdown and prepared images.
                 If preparation is incomplete, it saves the original source and selected local files instead.
               </p>
+              <label className="setting-row">
+                <input
+                  type="checkbox"
+                  checked={settings.warnWikilinks}
+                  onChange={(event) => setSettings({ ...settings, warnWikilinks: event.target.checked })}
+                />
+                <span>
+                  <strong>Warn about Obsidian [[wikilinks]]</strong>
+                  <br />
+                  X shows [[Note]] as literal text. Image embeds like ![[photo.png]] are always converted.
+                </span>
+              </label>
               <details className="help-details">
                 <summary>Testing and current limitations</summary>
                 <p>
@@ -1675,7 +1852,8 @@ export default function App() {
                 </p>
                 <p>
                   Remote images need CORS permission or a local replacement.
-                  ALT descriptions, formulas, GIF, SVG, and video are not
+                  Images over 5 MiB are downscaled and SVG is rendered to PNG.
+                  ALT descriptions, formulas, GIF, and video are not
                   implemented. Covers need companion 0.1.2 or later.
                 </p>
                 <button

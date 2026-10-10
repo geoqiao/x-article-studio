@@ -20,9 +20,9 @@ async page => {
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }, color);
   const assertMissing = async () => {
-    await page.waitForFunction(() => document.querySelector('.preview-alert strong')?.textContent.includes('2 images'));
+    await page.waitForFunction(() => document.querySelector('.preview-alert strong')?.textContent.includes('2 items to resolve'));
     assert(await page.locator('.xp-img').count() === 0, 'Old image bytes survived Markdown re-import');
-    assert(await page.getByRole('button', { name: 'Export ZIP', exact: true }).isDisabled(), 'Export enabled with stale images');
+    assert((await page.getByRole('button', { name: 'Export ZIP', exact: true }).getAttribute('title')).includes('unresolved'), 'Export offers a complete article with stale images');
     assert(await page.getByRole('button', { name: 'Create X draft', exact: true }).isDisabled(), 'Draft handoff enabled with stale images');
     assert(await page.getByRole('button', { name: /^Undo change to / }).count() === 0, 'Old replacement undo survived re-import');
     await page.getByRole('button', { name: /^Images/ }).click();

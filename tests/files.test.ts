@@ -51,10 +51,13 @@ describe('local image resolution', () => {
 });
 
 describe('image input validation', () => {
-  it('recognizes PNG bytes and rejects a fake MIME type', async () => {
+  it('recognizes image bytes regardless of the declared MIME type', async () => {
     const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
     expect(await sniffImage(new Blob([bytes], { type: 'application/octet-stream' }))).toBe('image/png');
-    await expect(sniffImage(new Blob(['<svg onload="bad()"/>'], { type: 'image/png' }))).rejects.toThrow('PNG, JPEG, or WebP');
+    // SVG is accepted as text and later drawn as an image, where scripts never run.
+    expect(await sniffImage(new Blob(['<?xml version="1.0"?>\n<!-- c -->\n<svg xmlns="http://www.w3.org/2000/svg" onload="bad()"/>'], { type: 'image/png' }))).toBe('image/svg+xml');
+    await expect(sniffImage(new Blob(['GIF89a'], { type: 'image/gif' }))).rejects.toThrow('GIF');
+    await expect(sniffImage(new Blob(['<html></html>'], { type: 'image/svg+xml' }))).rejects.toThrow('PNG, JPEG, WebP, or SVG');
   });
   it.each(['http://127.0.0.1/a', 'http://10.0.0.1/a', 'http://172.17.0.1/a', 'http://192.168.1.1/a', 'http://[::1]/a', 'file:///tmp/a', 'https://name:pass@example.com/a'])('does not fetch private or credential-bearing URL %s', (url) => {
     expect(() => allowedRemoteUrl(url)).toThrow();

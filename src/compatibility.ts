@@ -1,7 +1,8 @@
 export type FormatSupport = { syntax: string; status: 'Native' | 'Converted' | 'Limited' | 'Not implemented'; result: string; note: string };
 
 export const FORMATS: FormatSupport[] = [
-  { syntax: 'PNG / JPEG / WebP images', status: 'Converted', result: 'Uploaded as native X media', note: 'Attach a folder once, or replace an individual source. Up to 5 MiB per image and 20 MiB total in this version. Missing images block the handoff.' },
+  { syntax: 'PNG / JPEG / WebP / SVG images', status: 'Converted', result: 'Uploaded as native X media', note: 'Attach a folder once, or replace an individual source. Images over 5 MiB are downscaled automatically (sources up to 40 MiB) and SVG is rendered to PNG; a note says what changed. 20 MiB total after preparation. Missing images block the handoff.' },
+  { syntax: 'Obsidian ![[image]] embeds', status: 'Converted', result: 'Ordinary images', note: 'Wikilink-style embeds of PNG, JPEG, WebP, GIF or SVG files are treated like Markdown images. Match the image folder once; files are found by name.' },
   { syntax: 'Remote image URLs', status: 'Limited', result: 'Downloaded, then uploaded', note: 'Public servers must allow browser downloads (CORS). For blocked, redirected, or private URLs, download and attach the file. No login cookies are sent to image hosts.' },
   { syntax: 'Markdown tables', status: 'Native', result: 'Native Markdown table block', note: 'Keeps the table source. Only the bridge can insert the X Markdown table entity; Copy body pastes each row as a list item instead.' },
   { syntax: 'Tables as PNG', status: 'Converted', result: 'Rendered and uploaded automatically', note: 'Optional consistent image layout. Text, links, and cells stop being selectable in X. Wide/long tables need splitting.' },
@@ -16,9 +17,12 @@ export const FORMATS: FormatSupport[] = [
   { syntax: 'Standalone X post URLs', status: 'Native', result: 'Embedded X post', note: 'A post URL must occupy its own paragraph. Preview uses a link card; actual visibility depends on X.' },
   { syntax: 'Nested lists', status: 'Limited', result: 'Convert to one level before handoff', note: 'Use Convert to one level to retain all items in simple nested lists. Complex list blocks need manual editing; the converter would otherwise omit child content.' },
   { syntax: 'HTML line breaks and comments', status: 'Converted', result: 'Markdown breaks / omitted comments', note: 'Standalone and inline <br> become line breaks outside tables. HTML comments are omitted. Literal code examples and original source are unchanged.' },
-  { syntax: 'Other HTML and footnotes', status: 'Not implemented', result: 'Blocked before handoff', note: 'Rewrite HTML as Markdown and footnotes as links or endnotes to prevent lost content.' },
+  { syntax: 'Footnotes', status: 'Converted', result: 'Numbered endnotes on request', note: 'Use Convert to endnotes: each reference becomes [n] and the notes move to the end after a divider. References without a definition stay blocked.' },
+  { syntax: 'Other HTML', status: 'Not implemented', result: 'Blocked before handoff', note: 'Rewrite HTML as Markdown to prevent lost content.' },
+  { syntax: 'Obsidian [[wikilinks]]', status: 'Limited', result: 'Literal text, with a note', note: 'X shows [[Note]] as typed. Replace with a Markdown link or plain text. The check can be turned off under How to use.' },
+  { syntax: 'Commands piped into a shell', status: 'Limited', result: 'Flagged before creating the draft', note: 'X’s firewall has refused drafts containing text like curl … | sh, including inside code and tables. If creation fails with a firewall error, reword that line.' },
   { syntax: 'LaTeX / mathematical notation', status: 'Limited', result: 'Plain text or code, with a warning', note: 'Formula source is kept; this bridge does not render notation. Use an image for rendered formulas. Single-dollar inline formulas remain plain text.' },
   { syntax: 'Cover image', status: 'Native', result: 'Set on the draft by the companion', note: 'Add cover: path to the frontmatter or choose one under Images. PNG, JPEG, or WebP; X shows covers at about 5:2. Needs companion 0.1.2 or later.' },
-  { syntax: 'GIF, SVG, video, and image ALT', status: 'Not implemented', result: 'Set these separately in X', note: 'This MVP handles PNG/JPEG/WebP. Markdown image labels stay in source/export but are not set as X accessibility descriptions.' },
+  { syntax: 'GIF, video, and image ALT', status: 'Not implemented', result: 'Set these separately in X', note: 'Animated GIF and video are not uploaded. Markdown image labels stay in source/export but are not set as X accessibility descriptions.' },
   { syntax: 'Custom HTML/CSS and interactive diagrams', status: 'Not implemented', result: 'Cannot preserve arbitrary behavior', note: 'An X Article cannot execute this web app’s scripts or carry an arbitrary webpage layout. Mermaid exports are images.' },
 ];

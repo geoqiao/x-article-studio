@@ -78,7 +78,7 @@ export function ArticlePreview({
                     {block.loaded ? "Replace image" : "Choose image"}
                     <input
                       type="file"
-                      accept="image/png,image/jpeg,image/webp"
+                      accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
                       hidden
                       aria-label={`Preview replace ${asset.label}`}
                       onChange={(event) => {

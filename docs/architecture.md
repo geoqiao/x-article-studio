@@ -31,8 +31,10 @@ flowchart LR
 
 | Layer | Responsibility | Main files |
 | --- | --- | --- |
-| Planner | Optional H1 with editable title fallback; normalize safe HTML, retain reference definitions, verify content and asset placement against Kaitox output | `src/plan.ts`, `src/normalize.ts` |
-| Image resolution | Match attached files, reject ambiguous paths, CORS downloads without credentials, MIME/size checks | `src/files.ts` |
+| Planner | Optional H1 with editable title fallback; normalize safe HTML and Obsidian image embeds, retain reference definitions, verify content and asset placement against Kaitox output; optional wikilink and shell-pipe warnings; explicit footnote → endnote and nested-list conversions | `src/plan.ts`, `src/normalize.ts`, `src/settings.ts` |
+| Image resolution | Match attached files, reject ambiguous paths, CORS downloads without credentials, byte sniffing; SVG rasterization and downscaling over 5 MiB | `src/files.ts`, `src/images.ts` |
+| File access | Chromium File System Access: remembered Markdown and image-folder handles for Reload from file and automatic folder matching; standard inputs elsewhere | `src/filesystem.ts`, `src/storage.ts` |
+| Agent skill | The same planner bundled for Node (`pnpm build:skill`), local image/cover resolution, remote downloads, playwright-cli scripts | `src/core.ts`, `scripts/build-skill.mjs`, `skills/md2xarticle/` |
 | Rendering | Mermaid strict mode, normalized SVG rasterization, table canvas rendering | `src/render.ts` |
 | Preparation | Cached successful assets; dimensions, SHA-256, sanitized preview, complete ZIP or independent source backup | `src/prepare.ts`, `src/portable.ts`, `src/backup.ts` |
 | Editor | Source/asset/preview views, wrapped line-number gutter, error navigation, import, persistence | `src/App.tsx`, `src/MarkdownEditor.tsx`, `src/ArticlePreview.tsx`, `src/storage.ts` |

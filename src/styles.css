@@ -895,6 +895,44 @@ svg {
   cursor: pointer;
   padding: 9px 16px;
 }
+.format-note {
+  display: flex;
+  align-items: flex-start;
+}
+.format-note > button:first-child {
+  flex: 1;
+}
+.format-notes .note-action {
+  width: auto;
+  flex: none;
+  white-space: nowrap;
+  color: #1269cf;
+  padding-right: 16px;
+}
+.frontmatter-note {
+  color: #8a94a1;
+}
+.setting-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 14px;
+  font-size: 13px;
+  color: #536e8b;
+  cursor: pointer;
+}
+.setting-row input {
+  margin-top: 3px;
+}
+.reload-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+}
+.reload-file.needs-attention {
+  color: #b4541b;
+}
 .format-notes button {
   display: flex;
   width: 100%;

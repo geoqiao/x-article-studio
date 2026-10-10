@@ -1,13 +1,14 @@
 import DOMPurify from 'dompurify';
 import JSZip from 'jszip';
 import { renderPreviewHtml } from '@kaitox/x-article';
-import { COVER_KEY, fetchImageFile, MAX_TOTAL_BYTES, resolveLocalFile, sha256, sniffImage, toBase64 } from './files';
+import { COVER_KEY, fetchImageFile, MAX_TOTAL_BYTES, resolveLocalFile, sha256, toBase64 } from './files';
+import { normalizeImage } from './images';
 import { renderDiagram, renderTable } from './render';
 import { safeFileStem } from './plan';
 import { rewriteImageDestinations } from './portable';
 import type { ArticlePlan, AssetProgress, AssetSpec, Issue, LocalAssetMap, PreparedArticle, PreparedAsset } from './types';
 
-type CachedAsset = { input: File | string; blob: Blob; width: number; height: number; sha256: string; base64: string };
+type CachedAsset = { input: File | string; blob: Blob; width: number; height: number; sha256: string; base64: string; note?: string };
 export type AssetCache = Map<string, CachedAsset>;
 
 export function safePreview(plan: ArticlePlan, assets: PreparedAsset[] = []): string {
@@ -26,14 +27,6 @@ export function safePreview(plan: ArticlePlan, assets: PreparedAsset[] = []): st
   // Local-file previews have opaque origins and create blob:null/... URLs.
   // resolveImage above supplies only object URLs created from prepared assets.
   return DOMPurify.sanitize(html, { USE_PROFILES: { html: true }, FORBID_TAGS: ['style', 'iframe', 'form', 'input'], FORBID_ATTR: ['style'], ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|blob:(?:https?:\/\/|null\/)|[#/])/i });
-}
-
-async function imageDimensions(blob: Blob): Promise<{ width: number; height: number }> {
-  const bitmap = await createImageBitmap(blob);
-  const { width, height } = bitmap;
-  bitmap.close();
-  if (width > 16_384 || height > 16_384 || width * height > 40_000_000) throw new Error('Image dimensions exceed this version’s processing limit. Resize it first.');
-  return { width, height };
 }
 
 export async function prepareArticle(plan: ArticlePlan, files: LocalAssetMap, documentPath: string, onProgress: (p: AssetProgress) => void, signal: AbortSignal, cache: AssetCache = new Map()): Promise<PreparedArticle> {
@@ -73,15 +66,15 @@ export async function prepareArticle(plan: ArticlePlan, files: LocalAssetMap, do
           reason = 'missing-file';
           throw new Error(isCover ? 'Cover file not selected. Choose the cover or match its folder.' : 'Image file not selected. Choose the file or match its folder.');
         }
-        const mime = await sniffImage(blob);
-        blob = new Blob([blob], { type: mime });
-        const dimensions = await imageDimensions(blob);
-        cached = { input, blob, ...dimensions, sha256: await sha256(blob), base64: await toBase64(blob) };
+        const normalized = await normalizeImage(blob, spec.label);
+        blob = normalized.blob;
+        cached = { input, blob, width: normalized.width, height: normalized.height, note: normalized.note, sha256: await sha256(blob), base64: await toBase64(blob) };
         if (signal.aborted) throw new DOMException('Preparation cancelled.', 'AbortError');
         cache.set(cacheKey, cached);
       }
-      const { blob, width, height, sha256: hash, base64 } = cached;
+      const { blob, width, height, sha256: hash, base64, note } = cached;
       if (total + blob.size > MAX_TOTAL_BYTES) throw new Error('Images exceed 20 MiB in total. Resize or remove an image.');
+      if (note) issues.push({ id: `converted-${spec.id}`, severity: 'warning', message: note, line: spec.line });
       total += blob.size;
       const mime = blob.type;
       const ext = mime === 'image/jpeg' ? 'jpg' : mime.split('/')[1];
@@ -96,6 +89,8 @@ export async function prepareArticle(plan: ArticlePlan, files: LocalAssetMap, do
         assets.push(prepared);
         bundleAssets.push({ source: spec.source, fileName, mime, base64, sha256: hash });
         if (width > 2400 || height > 5000) issues.push({ id: `readability-${spec.id}`, severity: 'warning', message: `Check “${spec.label}” at phone width; large images can make labels hard to read.`, line: spec.line });
+        // A portrait diagram three times taller than wide shrinks to unreadable text on a phone.
+        if (spec.kind === 'mermaid' && height > width * 3) issues.push({ id: `tall-${spec.id}`, severity: 'warning', message: `“${spec.label}” is ${width} × ${height}, which is very tall on a phone. Try flowchart LR, or split the diagram.`, line: spec.line });
       }
       onProgress({ id: spec.id, state: 'ready' });
     } catch (error) {

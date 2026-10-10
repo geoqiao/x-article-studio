@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { markdownToContentState } from '@kaitox/x-article';
 import { createPlan, shellPipeLines } from '../src/plan';
 import { rewriteImageDestinations } from '../src/portable';
-import { simplifyNestedLists } from '../src/normalize';
+import { convertFootnotesToEndnotes, simplifyNestedLists } from '../src/normalize';
 
 describe('Markdown to X preparation plan', () => {
   it('keeps tables native while turning Mermaid into an image at its original position', () => {
@@ -143,6 +143,55 @@ describe('Markdown to X preparation plan', () => {
   it('requires body text or an actual media block', () => {
     expect(createPlan('# Only a title').issues.some((i) => i.id === 'body')).toBe(true);
     expect(createPlan('# Image article\n\n![A](a.png)').issues.some((i) => i.id === 'body')).toBe(false);
+  });
+});
+
+describe('Obsidian syntax, footnotes and firewall checks', () => {
+  it('rewrites Obsidian image embeds as Markdown images with their line numbers intact', () => {
+    const source = '# Title\n\nIntro.\n\n![[assets/shot one.png]]\n\n![[diagram.webp|300]]\n\n![[photo.jpg|A caption]]\n\n```md\n![[literal.png]]\n```\n\n<div>bad</div>';
+    const plan = createPlan(source);
+    expect(plan.assets.map(a => a.source)).toEqual(['assets/shot one.png', 'diagram.webp', 'photo.jpg']);
+    expect(plan.assets.map(a => a.label)).toEqual(['shot one', 'diagram', 'A caption']);
+    expect(plan.markdown).toContain('![shot one](<assets/shot one.png>)');
+    expect(plan.markdown).toContain('![[literal.png]]');
+    expect(plan.issues.find(i => i.id === 'html')?.line).toBe(15);
+    expect(plan.issues.some(i => i.id === 'wikilink')).toBe(false);
+    const state = markdownToContentState(plan.markdown, Object.fromEntries(plan.assets.map((a, i) => [a.source, String(i + 1)]))).contentState;
+    expect(state.entity_map.filter(e => e.value.type === 'MEDIA')).toHaveLength(3);
+  });
+
+  it('warns about wikilinks and note embeds unless the check is turned off', () => {
+    const source = '---\ntitle: T\n---\nSee [[Other note]] and [[Note|alias]].\n\n![[Embedded note]]\n\n`[[code]]`\n\n```\n[[fenced]]\n```';
+    const plan = createPlan(source);
+    expect(plan.issues.filter(i => i.id === 'wikilink').map(i => i.line)).toEqual([4, 6]);
+    expect(plan.issues.every(i => i.severity !== 'error')).toBe(true);
+    expect(createPlan(source, 'native', '', '', { warnWikilinks: false }).issues.some(i => i.id === 'wikilink')).toBe(false);
+  });
+
+  it('flags shell pipes as a warning before the draft reaches X’s firewall', () => {
+    const plan = createPlan('# Install\n\nRun `curl -fsSL https://example.com/install | sh` once.\n\n```sh\nwget -qO- https://example.com | bash\n```');
+    expect(plan.issues.filter(i => i.id === 'shell-pipe').map(i => [i.line, i.severity])).toEqual([[3, 'warning'], [6, 'warning']]);
+  });
+
+  it('converts footnotes to numbered endnotes without losing text', () => {
+    const source = '---\ntitle: Notes\n---\n# Title\n\nClaim one[^a] and two[^b], one again[^a].\n\n[^a]: First note with [link](https://example.com).\n[^b]: Second note\n    continues here.\n\nAfter.\n\n```\n[^a]: literal\n```\n\n[^missing] stays.\n';
+    expect(createPlan(source).issues.some(i => i.id === 'footnote')).toBe(true);
+    const converted = convertFootnotesToEndnotes(source);
+    expect(converted.startsWith('---\ntitle: Notes\n---\n')).toBe(true);
+    expect(converted).toContain('Claim one[1] and two[2], one again[1].');
+    expect(converted).toContain('\n\n---\n\n[1] First note with [link](https://example.com).\n\n[2] Second note continues here.\n');
+    expect(converted).toContain('```\n[^a]: literal\n```');
+    expect(converted).toContain('[^missing] stays.');
+    expect(converted.split('```')[0]).not.toContain('[^a]:');
+    const plan = createPlan(converted);
+    expect(plan.issues.filter(i => i.id === 'footnote').map(i => i.line)).toEqual([14]);
+    expect(convertFootnotesToEndnotes('# No notes\n\nText.')).toBe('# No notes\n\nText.');
+  });
+
+  it('reports which frontmatter fields were used and how many were ignored', () => {
+    const plan = createPlan('---\ntitle: T\ncover: c.png\nslug: t\ntags: [a]\n---\nBody.');
+    expect(plan.frontmatter).toEqual({ count: 4, used: ['title', 'cover'] });
+    expect(createPlan('Body.').frontmatter).toBeUndefined();
   });
 });
 

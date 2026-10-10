@@ -1,12 +1,12 @@
 # Markdown → X Article compatibility
 
-Updated: **2026-10-01**. Scope: Article Studio web editor using `@kaitox/x-article@0.6.0`. “Native” describes the generated X representation, not a successful live-account test.
+Updated: **2026-10-08**. Scope: Article Studio web editor using `@kaitox/x-article@0.6.0`. “Native” describes the generated X representation, not a successful live-account test.
 
 ## The three priorities
 
 | Input | Solution implemented | What is preserved | Remaining boundary |
 | --- | --- | --- | --- |
-| Local images | Resolve attached files → verify/decode bytes → upload through companion → map source to media ID | Document placement; repeated references reuse one uploaded source within the job | User must grant file access once. Body PNG/JPEG/WebP only; ALT and covers are separate work |
+| Local images | Resolve attached files → verify bytes → render SVG / downscale over 5 MiB → upload through companion → map source to media ID | Document placement; repeated references reuse one uploaded source within the job. Chromium remembers the file and image folder for Reload from file | User must grant file access once (per session in Chromium, every time elsewhere). Sources up to 40 MiB; ALT is separate work |
 | Remote images | Fetch public bytes in the browser → same pipeline | Placement and original pixels | Host must permit CORS; redirects, private hosts, login-only files, and fetch failures require local replacement |
 | Markdown tables | Store the pipe table in an X `MARKDOWN` entity | Table structure, text and Markdown links; native X rendering | Exact appearance and editing affordances are controlled by X and need a live check |
 | Tables as PNG | Render canvas locally → same image pipeline | A fixed, readable layout for ordinary text cells | Cell semantics, selectable text, inline formatting and live links are lost; column alignment syntax is not reproduced by this PNG renderer |
@@ -40,10 +40,15 @@ No manual screenshots are needed for supported tables or Mermaid. Automatic plac
 | Repeated image source | Supported | One prepared asset/upload per source, each placement retained; different source paths are not deduplicated by bytes |
 | HTML `<br>` and comments | Normalized | Breaks become Markdown breaks outside tables; comments are omitted; source and code examples are unchanged |
 | Other raw HTML | Blocked | Rewrite as Markdown to prevent dropped content |
-| Footnotes | Blocked | Rewrite as links/endnotes |
+| Footnotes | Explicit conversion | Convert to endnotes turns references into [n] and moves definitions after a divider at the end; references without a definition stay blocked |
+| Obsidian `![[image.png]]` embeds | Converted | Treated as Markdown images; the `|300` width or `|alt` modifier becomes the label. Files are matched by name from the chosen folder |
+| Obsidian `[[wikilinks]]` and note embeds | Warning (optional) | Reach X as literal text; flagged with line numbers. The check can be turned off under How to use |
+| Commands piped into a shell | Warning | X's firewall has refused drafts containing `curl … \| sh`; the line is flagged before creation and the companion names the cause after a 403 |
 | LaTeX / math fences / display formulas | Warning | Source is retained as text/code; use an image for rendered notation. Official X API supports LaTeX; this adapter does not map it |
 | Single-dollar inline formulas | Plain text | Not interpreted as math; manually convert if intended as a formula |
-| GIF, SVG, video | Not implemented | Convert to supported body image types, or add separately in X |
+| SVG | Converted | Rendered to PNG in the browser (about 1,600–2,400 px wide); scripts never run. Fonts and external references inside the SVG are not loaded |
+| Images over 5 MiB | Converted, warning | Downscaled to at most 2,400 px and re-encoded until under 5 MiB; PNG photos fall back to JPEG. The note shows the new size |
+| GIF, video | Not implemented | Convert to supported body image types, or add separately in X |
 | Cover (frontmatter `cover:` or chosen under Images) | Uploaded and set after creation | Companion 0.1.2+. PNG/JPEG/WebP; a cover X refuses leaves the draft in place with a warning |
 | Markdown image ALT labels | Source only | Kept in source/export; not set as X accessibility descriptions |
 | Custom CSS/layout, interactive Mermaid | Cannot transfer arbitrary behavior | X controls its renderer; exported PNGs cannot execute scripts |

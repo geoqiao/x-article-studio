@@ -78,10 +78,13 @@ See [extension instructions](extension/README.md) and [architecture](docs/archit
 | H4–H6, inline code, task checkboxes | Reduced heading depth / lost monospace or checkbox state, with warnings |
 | Simple nested lists | Explicit one-click conversion to single-level items; review before handoff |
 | HTML `<br>` outside tables / comments | Converted to line breaks / omitted without modifying original source |
-| Other HTML, footnotes, complex list blocks, nested images/diagrams | Blocked where the converter would lose content |
+| Footnotes | Convert to endnotes button: references become [n], notes move after a divider at the end |
+| Obsidian `![[image]]` embeds and `[[wikilinks]]` | Embeds become images; wikilinks are flagged (check can be turned off) |
+| Other HTML, complex list blocks, nested images/diagrams | Blocked where the converter would lose content |
 | Math | Source kept as plain text/code, with a warning; use an image for rendered notation |
 | Cover | Uploaded and set on the draft by companion 0.1.2+ |
-| ALT descriptions, GIF/SVG/video | Not implemented by this prototype; set or convert separately |
+| SVG and images over 5 MiB | SVG rendered to PNG; large images downscaled, with a note |
+| ALT descriptions, GIF/video | Not implemented by this prototype; set or convert separately |
 
 The distinction between X platform capabilities and this bridge’s limitations matters. For example, **X’s official API documents LaTeX and native tables**. This prototype implements tables through Kaitox’s private adapter, but not LaTeX. See the [complete compatibility matrix and sources](docs/compatibility.md).
 
@@ -89,7 +92,8 @@ The [draft-flow UX audit](docs/draft-flow-2026-09-23.md) records which condition
 
 ## Limits and storage
 
-- Up to 200,000 Markdown characters, a 2,000-character single-line title, 40 prepared assets, 5 MiB per image, and 20 MiB total. These are prototype limits, not a statement of all X limits.
+- Up to 200,000 Markdown characters, a 2,000-character single-line title, 40 prepared assets, 5 MiB per image after automatic downscaling (40 MiB source), and 20 MiB total. These are prototype limits, not a statement of all X limits.
+- In Chromium browsers the opened .md file and image folder are remembered (File System Access API): **Reload** re-reads the file after you edit it elsewhere and keeps your image choices, and the next article from the same folder matches its images automatically. Other browsers use the standard file inputs.
 - Native code/table source has a conservative 10,000-character preflight budget. X documents a weighted Markdown budget; the app’s raw-character check is an approximation, and X remains authoritative.
 - Table PNGs support up to 10 columns and 150 rows within canvas size limits. Split large tables and check readability on a phone.
 - Mermaid is static in X. Its editable source remains in the locally saved draft. ZIP Markdown references the prepared PNG.

@@ -36,7 +36,8 @@ async page => {
   assert(!copiedBody.html.includes('A calmer way to publish') && !copiedBody.html.includes('blob:'), 'Clipboard contains title or invalid local image URLs');
   assert(copiedBody.html.includes('<h1>Keep your writing workflow</h1>'), 'Clipboard heading does not map to X Heading');
   assert(!/Replace image|Undo change|Fix image/.test(copiedBody.html), 'Preview editing controls leaked into clipboard');
-  assert(copiedBody.plain.includes('[Image:') && copiedBody.html.includes('<table'), 'Clipboard missing placement markers or table');
+  // X's paste handler has no table block, so each table row is copied as a list item.
+  assert(copiedBody.plain.includes('[Image:') && !copiedBody.html.includes('<table') && /<li><strong>/.test(copiedBody.html), 'Clipboard missing placement markers or table rows as list items');
   await page.getByRole('button', { name: 'Copy title', exact: true }).click();
   await page.waitForFunction(() => document.querySelector('.output-actions button')?.textContent === 'Copied!');
   assert(await page.evaluate(() => navigator.clipboard.readText()) === 'A calmer way to publish', 'Title copy failed');

@@ -1,11 +1,11 @@
 import { marked, type Token, type Tokens } from 'marked';
 import { markdownToContentState, parseFrontmatter } from '@kaitox/x-article';
-import type { ArticlePlan, AssetSpec, Issue, TableMode } from './types';
-import { normalizeSimpleHtml } from './normalize';
+import type { ArticlePlan, AssetSpec, Issue, PlanOptions, TableMode } from './types';
+import { normalizeSimpleHtml, wikilinkLines } from './normalize';
 
 export const MAX_MARKDOWN_LENGTH = 200_000;
 
-export function createPlan(source: string, tableMode: TableMode = 'native', titleOverride = '', documentPath = ''): ArticlePlan {
+export function createPlan(source: string, tableMode: TableMode = 'native', titleOverride = '', documentPath = '', options: PlanOptions = {}): ArticlePlan {
   source = source.replace(/\r\n?/g, '\n');
   const parsed = parseFrontmatter(source);
   const { fields } = parsed;
@@ -101,6 +101,8 @@ export function createPlan(source: string, tableMode: TableMode = 'native', titl
   markdown += body.slice(offset);
   const coverLine = fields.cover ? source.split('\n').slice(0, frontmatterLines).findIndex((text) => /^cover\s*:/.test(text)) + 1 : 0;
   const cover = fields.cover ? { source: fields.cover, line: coverLine || 1 } : undefined;
+  if (options.warnWikilinks !== false) for (const line of wikilinkLines(parsed.body)) add('wikilink', 'warning', 'Obsidian [[link]] syntax reaches X as literal text. Replace it with a Markdown link or plain text, or turn this check off.', line + frontmatterLines);
+  for (const line of shellPipeLines(parsed.body, 20)) add('shell-pipe', 'warning', 'X’s firewall has refused articles containing a command piped into a shell, such as curl … | sh. If draft creation fails with a firewall error, reword this line.', line + frontmatterLines);
   const converted = markdownToContentState(markdown);
   const filename = documentPath.split(/[\\/]/).pop()?.replace(/\.(md|markdown|mdown)$/i, '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 2_000);
   const title = titleOverride.trim() || fields.title?.trim() || converted.title || filename || 'Untitled article';
@@ -116,7 +118,9 @@ export function createPlan(source: string, tableMode: TableMode = 'native', titl
   const resolved = new Set(probe.contentState.entity_map.flatMap((e) => e.value.type === 'MEDIA' ? e.value.data.media_items.map((m) => m.media_id) : []));
   for (const [i, asset] of assets.entries()) if (!resolved.has(String(i + 1)) && !issues.some(issue => issue.id === 'nested-image' && issue.line === asset.line)) add(`unused-${asset.id}`, 'error', `“${asset.label}” cannot be placed here. Move it into a standalone paragraph.`, asset.line);
   const wordCount = (body.match(/[\p{Script=Han}]|[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu) || []).length;
-  return { title, markdown, assets, issues, counts, wordCount, cover };
+  const frontmatterKeys = Object.keys(fields);
+  const frontmatter = frontmatterKeys.length ? { count: frontmatterKeys.length, used: ['title', 'cover'].filter((key) => fields[key as 'title' | 'cover']) } : undefined;
+  return { title, markdown, assets, issues, counts, wordCount, cover, frontmatter };
 }
 
 /**
