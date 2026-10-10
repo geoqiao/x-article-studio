@@ -201,10 +201,21 @@ if (transforms.length || destinations.size) {
   if (destinations.size) transforms.push(`${destinations.size} remote image(s) downloaded`);
 }
 
+// Playwright attached to the user's Chrome cannot upload by path, so file contents
+// travel inside the script. Very large selections fall back to paths.
+const MIME = { '.md': 'text/markdown', '.markdown': 'text/markdown', '.mdown': 'text/markdown', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml' };
+const MAX_EMBEDDED_BYTES = 45 * 1024 * 1024;
+const uploads = [loaded, ...bodyImages, ...(coverInput ? [coverInput] : [])];
+const embed = uploads.reduce((total, path) => total + statSync(path).size, 0) <= MAX_EMBEDDED_BYTES;
+if (!embed) notes.push('Files total more than 45 MiB, so the script uploads them by path. If the upload step times out in the user’s Chrome, shrink the largest images first.');
+const upload = (path) => embed
+  ? { name: basename(path), mimeType: MIME[extname(path).toLowerCase()] ?? 'application/octet-stream', base64: readFileSync(path).toString('base64') }
+  : path;
+
 const result = { article: articlePath, loaded, url, images: bodyImages, cover: cover ?? null, coverCandidates, transforms, problems, warnings, notes };
 if (!problems.length) {
   const template = (name) => readFileSync(new URL(name, import.meta.url), 'utf8');
-  const config = JSON.stringify({ url, files: [loaded, ...bodyImages], coverInput: coverInput ?? null, expectsCover: Boolean(cover) });
+  const config = JSON.stringify({ url, files: [loaded, ...bodyImages].map(upload), coverInput: coverInput ? upload(coverInput) : null, expectsCover: Boolean(cover) });
   writeFileSync(join(workDirectory, 'create.js'), template('./create.template.js').replace('__CONFIG__', () => config));
   writeFileSync(join(workDirectory, 'wait.js'), template('./wait.template.js'));
   result.create = join(workDirectory, 'create.js');

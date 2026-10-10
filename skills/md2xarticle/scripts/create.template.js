@@ -1,11 +1,13 @@
 // Filled in by prepare.mjs. Run with: playwright-cli -s=<session> run-code --filename=<this file>
 async page => {
   const config = __CONFIG__;
+  // Embedded files are uploaded by content; a plain string is a path.
+  const payload = (file) => typeof file === 'string' ? file : { name: file.name, mimeType: file.mimeType, buffer: Buffer.from(file.base64, 'base64') };
   await page.goto(config.url);
   await page.getByRole('textbox', { name: 'Markdown source', exact: true }).waitFor();
   // One selection carries the Markdown and every local image it references.
-  await page.getByLabel('Import Markdown file').setInputFiles(config.files);
-  if (config.coverInput) await page.getByLabel('Choose cover image').setInputFiles(config.coverInput);
+  await page.getByLabel('Import Markdown file').setInputFiles(config.files.map(payload));
+  if (config.coverInput) await page.getByLabel('Choose cover image').setInputFiles(payload(config.coverInput));
 
   const settled = await page.waitForFunction(() => {
     if (document.querySelector('#draft-issues')) return 'issues';
