@@ -1,8 +1,8 @@
 # Chrome Web Store listing
 
 Item ID: `ojpjldmiiibgjnbjfiacaoenfgpdhbbh`
-Published version: 0.1.0. Submitted update: 0.1.1 (automatic X Articles tab opening).
-Status: **Pending review** for 0.1.1 — verified in the developer dashboard on September 19, 2026. Public 0.1.0 remains available until approval and rollout.
+Published version: 0.1.1. Submitted update: 0.1.2 (covers, create-request error classes, job status, optional Create drafts without this review).
+Status: **Pending review** for 0.1.2 — submitted and verified in the developer dashboard on October 15, 2026. Public 0.1.1 remains available until approval and rollout.
 Automatic publication after approval: enabled.
 
 - [Developer dashboard](https://chrome.google.com/webstore/devconsole/10ecee90-d360-49ac-9f0c-51eb74e01d7e/ojpjldmiiibgjnbjfiacaoenfgpdhbbh/edit/status)
@@ -12,9 +12,14 @@ The listing uses the website's logo, two screenshots, and the small promotional 
 
 The description below includes automatic X Articles tab opening in 0.1.1, the September 19 clarification separating extension privacy from website statistics, and canonical support/privacy URLs. The 0.1.1 package, description, support/privacy URLs, permission explanation and reviewer instructions were saved and submitted on September 19. The dashboard confirmed **This draft is pending review**. Approval and public rollout remain controlled by Google.
 
-## 0.1.2 (built, not submitted)
+## 0.1.2 (submitted October 15, 2026)
 
-Adds cover images, error classification for the create request, a job-status reply to the website, and the opt-in **Create drafts without this review** setting. Before submitting, update the description, single purpose, `scripting` justification and reviewer instructions below: they state that nothing is uploaded before confirmation on the review page, which no longer holds once a user enables that setting. The privacy page already describes it.
+Adds cover images, error classification for the create request, a job-status reply to the website, and the opt-in **Create drafts without this review** setting. The description, single purpose, `scripting` justification and reviewer instructions below were updated so they no longer say nothing is uploaded before the review page in every case. The privacy page already described the setting.
+
+- Package: `article-studio-0.1.2.zip` from `pnpm build:store` after `pnpm check` and `pnpm test` (93 tests) passed. Archived at `~/.local/share/opc-path-releases/2026-10-15/`, SHA-256 `3dd21dcaa0295f9e2346c5c941b6a3efd7c31fc3165fa44a304533d511f67938`.
+- Dashboard after upload: Draft 0.1.2, Published 0.1.1, permissions unchanged (`scripting`, host permission).
+- Description, single purpose and `scripting` justification were saved and matched this file after a fresh reload. Reviewer instructions were saved (dashboard: saved on October 15, 2026).
+- The submission dialog had automatic publication after review checked. A fresh status page showed **Pending review** / **This draft is pending review**.
 
 ## Description
 
@@ -26,19 +31,20 @@ Article Studio X companion connects the editor at md2xarticle.com to X Articles.
 - Attach an image folder once. The companion uploads and places the prepared images in document order.
 - Render Mermaid diagrams to PNG automatically.
 - Keep native tables or render tables as images for consistent layout.
-- Review the article title, body, and prepared images before anything is uploaded to X.
+- Add a cover image; the companion sets it on the draft.
+- Review the article title, body, cover, and prepared images before anything is uploaded to X. An optional setting in the extension, off by default, skips this review.
 - Recover from failed uploads and check uncertain results before retrying.
 
 How to use:
 1. Install the extension and open md2xarticle.com.
 2. Paste Markdown or choose Example to try the included sample.
 3. Attach any missing image files and check the preview.
-4. Choose Create X draft in Article Studio, then confirm in the extension's review page. X Articles opens automatically if needed. If asked, sign in there and retry from the review page.
+4. Choose Create X draft in Article Studio, then confirm in the extension's review page. If you turned on Create drafts without this review, the draft is created right away. X Articles opens automatically if needed. If asked, sign in there and retry from the review page.
 5. Review and publish the resulting draft in X.
 
 The website works without an Article Studio account. Creating X drafts requires an X account with access to Articles. The extension creates drafts; publishing happens in X. It uses X's web editor interfaces, which may change.
 
-Markdown and images are prepared locally in your browser. The extension sends the article and images directly to X only after your confirmation. It uses the existing session in your X tab and does not ask for your password. The companion does not include advertising or analytics tracking. The website collects visit statistics separately, as explained at md2xarticle.com/privacy.
+Markdown and images are prepared locally in your browser. The extension sends the article, images, and cover directly to X only after your confirmation in the review page, or, if you turned on Create drafts without this review, after you choose Create X draft on the website. It uses the existing session in your X tab and does not ask for your password. The companion does not include advertising or analytics tracking. The website collects visit statistics separately, as explained at md2xarticle.com/privacy.
 
 Article Studio is independent and is not affiliated with or endorsed by X Corp.
 
@@ -48,11 +54,11 @@ Privacy: https://md2xarticle.com/privacy
 
 ## Single purpose
 
-Create an X Article draft, including its prepared images, from a Markdown article explicitly handed off by the user at md2xarticle.com. The extension reviews the handoff and uploads it to the user's existing X Articles session only after confirmation.
+Create an X Article draft, including its prepared images and optional cover, from a Markdown article explicitly handed off by the user at md2xarticle.com. The extension uploads it to the user's existing X Articles session only after the user confirms in the extension's review page, or, if the user turned on the optional Create drafts without this review setting (off by default), after the user chooses Create X draft on the website.
 
 ## Permission justifications
 
-scripting: Injects the packaged x-runner.js into a loaded x.com/compose/articles tab after the user confirms Create X draft. The extension reuses an existing tab or opens one automatically. The runner uploads the prepared images and creates the article draft using that tab's X session. All executable code is bundled in the extension.
+scripting: Injects the packaged x-runner.js into a loaded x.com/compose/articles tab after the user confirms Create X draft in the review page, or chooses it on the website when the optional setting that skips the review is on. The extension reuses an existing tab or opens one automatically. The runner uploads the prepared images and optional cover, creates the article draft, and sets its cover using that tab's X session. All executable code is bundled in the extension.
 
 Host permissions: https://md2xarticle.com/* allows the content script to receive a user-initiated article handoff from this exact website. https://x.com/compose/articles* allows the extension to locate the user's X Articles tab and run the bundled draft client there. No content scripts run on unrelated sites. There is no all-sites, tabs, cookies, or upload-host permission.
 
@@ -62,7 +68,11 @@ Data disclosures: Website content (article title, body, images and associated fi
 
 ## Reviewer instructions
 
-Saved and submitted for the 0.1.1 reviewer field on September 19:
+Saved and submitted for the 0.1.2 reviewer field on October 15 (0 of 500 characters):
+
+> 
+
+Previous 0.1.1 reviewer field (September 19):
 
 > Open https://md2xarticle.com/ > Example > Load example. Wait for preview, then Create X draft: review title, body and 2 images; no upload yet. Confirm to automatically open X Articles and create a draft. Use your own X account with Articles access. If asked, sign in in the X tab and retry from the review. Publishing is separate in X. Discard deletes the local staged job. No Article Studio login needed. Toolbar icon opens the website.
 
@@ -84,7 +94,7 @@ The extension uses a packaged @kaitox/x-article client in the X tab's MAIN world
 - Icon: ../icons/icon-128.png (derived from the website's public/logo.png)
 - Screenshots: screenshot-editor.png, screenshot-review.png (1280 × 800)
 - Small promotional tile: small-promo.png (440 × 280)
-- Package: article-studio-0.1.1.zip, generated by pnpm build:store
+- Package: article-studio-0.1.2.zip, generated by pnpm build:store
 - Store build output: ../../dist-extension-store/, production origin only
 - Development builds retain the localhost origins; do not upload their ZIP.
 
