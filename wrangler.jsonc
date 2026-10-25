@@ -9,7 +9,8 @@
     "command": "pnpm build:production"
   },
   "assets": {
-    "directory": "./dist"
+    "directory": "./dist",
+    "not_found_handling": "404-page"
   },
   "routes": [
     { "pattern": "md2xarticle.com", "custom_domain": true }
