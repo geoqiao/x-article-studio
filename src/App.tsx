@@ -362,7 +362,7 @@ export default function App() {
   }, [notice]);
   useEffect(() => {
     if (!copied) return;
-    const timer = setTimeout(() => setCopied(""), 2500);
+    const timer = setTimeout(() => setCopied(""), 1500);
     return () => clearTimeout(timer);
   }, [copied]);
   useEffect(
@@ -897,6 +897,9 @@ export default function App() {
         </nav>
       </header>
 
+      <div className="sr-only" role="status" aria-live="polite">
+        {copied === "title" ? "Title copied" : copied === "body" ? "Body copied" : ""}
+      </div>
       <div className="action-bar">
         <div className="file-actions">
           <button onClick={() => setModal("new")} disabled={booting}>
@@ -918,17 +921,17 @@ export default function App() {
           </button>
         </div>
         <div className="output-actions">
-          <button onClick={copyTitle} disabled={!plan.title || booting}>
-            <Copy size={14} />
+          <button className="copy-button" onClick={copyTitle} disabled={!plan.title || booting}>
+            {copied === "title" ? <Check size={14} className="copied-icon" /> : <Copy size={14} />}
             <span className="label">{copied === "title" ? "Copied!" : "Copy title"}</span>
           </button>
           <button
             onClick={copyBody}
             disabled={!canCopyBody}
-            className="button-primary"
+            className="button-primary copy-button"
             title={canCopyBody ? "Copy formatted text; images become placement markers" : "Resolve the content issues shown in the preview before copying"}
           >
-            <Copy size={14} />
+            {copied === "body" ? <Check size={14} className="copied-icon" /> : <Copy size={14} />}
             <span className="label">{copied === "body" ? "Copied!" : "Copy body"}</span>
           </button>
           <button

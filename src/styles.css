@@ -34,6 +34,16 @@ body {
   height: 100%;
   min-height: 0;
 }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .product-guide {
   max-width: 780px;
   margin: 0 auto;
@@ -111,6 +121,20 @@ button {
 }
 button:hover {
   background: #eef1f5;
+}
+button:active:not(:disabled) {
+  background: #e2e7ee;
+}
+@media (prefers-reduced-motion: no-preference) {
+  button,
+  .header-links a {
+    transition:
+      background-color 0.12s,
+      transform 0.08s;
+  }
+  button:active:not(:disabled) {
+    transform: scale(0.97);
+  }
 }
 button:disabled {
   cursor: default;
@@ -296,6 +320,26 @@ svg {
 .button-primary:disabled:hover {
   background: var(--blue);
 }
+.button-primary:active:not(:disabled) {
+  background: #0049a8;
+}
+.copy-button {
+  min-width: 7.6em;
+}
+.copy-button .copied-icon {
+  animation: pop-in 0.18s ease-out;
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .copy-button .copied-icon {
+    animation: none;
+  }
+}
 .button-outline {
   display: inline-flex;
   align-items: center;
@@ -308,6 +352,10 @@ svg {
   min-height: 38px;
   font-size: 13px;
   line-height: 1.45;
+}
+.button-outline:hover {
+  background: #f4f6f9;
+  border-color: #b9c2cf;
 }
 .x-symbol {
   font-size: 15px;
@@ -1429,6 +1477,9 @@ dialog::backdrop {
   .action-bar .button-primary {
     min-height: 44px;
     padding: 0 12px;
+  }
+  .action-bar .copy-button {
+    min-width: 0;
   }
   .draft-arrow {
     display: none;
