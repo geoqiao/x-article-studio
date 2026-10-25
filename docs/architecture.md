@@ -8,7 +8,7 @@ Kaitox parses Markdown into X’s structured article content state. Text becomes
 
 Its extension uses an authenticated X browser session and X’s private web endpoints. A local relay connects CLI/editor workflows to that extension. Calling its function named `publishArticle` creates a draft; it does not mean the article has been publicly published.
 
-Article Studio reuses the npm converter, SVG normalization, and `XArticleClient`. A web app supplies the writing interface and talks directly to its own companion through a bounded page-message protocol, so there is no relay process. It does not copy Kaitox’s full extension, branding, or service.
+md2xarticle reuses the npm converter, SVG normalization, and `XArticleClient`. A web app supplies the writing interface and talks directly to its own companion through a bounded page-message protocol, so there is no relay process. It does not copy Kaitox’s full extension, branding, or service.
 
 ```mermaid
 flowchart LR
@@ -62,7 +62,7 @@ Async Clipboard is tried first. If it is blocked or unavailable, a selected rich
 
 ## Session and network behavior
 
-A standalone website cannot read another origin’s login cookies. The companion injects its bundled runner into an existing X Articles tab. `ct0` is read there, and X requests use the page’s own `fetch` with credentials included. Cookie values are not returned to Article Studio or saved in extension storage. Kaitox supplies the public web-client bearer fallback; it is not a user API secret.
+A standalone website cannot read another origin’s login cookies. The companion injects its bundled runner into an existing X Articles tab. `ct0` is read there, and X requests use the page’s own `fetch` with credentials included. Cookie values are not returned to md2xarticle or saved in extension storage. Kaitox supplies the public web-client bearer fallback; it is not a user API secret.
 
 The page protocol accepts status, staging, and reading the outcome of a staged job. Draft creation starts from the extension’s own review page, or directly on staging once the user has enabled automatic creation there. That setting can only be changed from an extension page, so the website and anything driving it cannot enable it. Page requests must come from the top frame and an exact configured app origin. Extension host permissions cover the app and X; they do not grant access to arbitrary image sites. Remote images are retrieved by the web app or supplied locally before staging.
 
