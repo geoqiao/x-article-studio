@@ -5,7 +5,6 @@ import {
   Bold,
   Check,
   CircleAlert,
-  Code2,
   Copy,
   FileText,
   FolderOpen,
@@ -95,6 +94,7 @@ type Modal =
 type DraftJob = BridgeJob & { auto: boolean };
 const STANDALONE = import.meta.env.VITE_STANDALONE_PREVIEW === "true";
 const FENCE = String.fromCharCode(96).repeat(3);
+const COMPANION_URL = "https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh";
 
 export default function App() {
   const [markdown, setMarkdown] = useState(SAMPLE);
@@ -214,7 +214,6 @@ export default function App() {
   const missingImages = assetErrors.filter(
     (error) => error.reason === "missing-file",
   );
-  const modeLabel = STANDALONE ? "HTML preview" : "Markdown to X Articles";
 
   useEffect(() => {
     let cancelled = false;
@@ -879,43 +878,49 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <a className="brand" href="#" aria-label="Article Studio">
-          <img className="brand-icon" src={logoUrl} alt="" width="32" height="32" />
-          Article Studio
+        <a className="brand" href={STANDALONE ? "#" : "/"}>
+          <img className="brand-icon" src={logoUrl} alt="" width="28" height="28" />
+          md2xarticle
         </a>
-        <span className="app-description">{modeLabel}</span>
-        <div className="header-links">
+        {STANDALONE ? (
+          <span className="app-description">HTML preview</span>
+        ) : (
+          <h1 className="app-description">Convert Markdown to X Articles</h1>
+        )}
+        <nav className="header-links" aria-label="Product">
+          {!STANDALONE && <a href="/support">Guide</a>}
+          {!STANDALONE && <a href={COMPANION_URL}>Chrome companion</a>}
           <button onClick={() => setModal("formats")}>Format support</button>
           <button onClick={() => setModal("help")}>
             <HelpCircle size={15} /> How to use
           </button>
-        </div>
+        </nav>
       </header>
 
       <div className="action-bar">
         <div className="file-actions">
           <button onClick={() => setModal("new")} disabled={booting}>
-            <Plus size={15} /> New
+            <Plus size={15} /> <span className="label">New</span>
           </button>
           <button onClick={() => void openFiles()} disabled={booting}>
-            <UploadIcon /> Import Markdown
+            <UploadIcon /> <span className="label">Import Markdown</span>
           </button>
           <button
             onClick={() => setModal("images")}
             className={assetErrors.length ? "needs-attention" : ""}
           >
-            <ImageIcon size={15} /> Images{" "}
+            <ImageIcon size={15} /> <span className="label">Images</span>{" "}
             <span className="count">{plan.assets.length}</span>
             {assetErrors.length > 0 && <span className="attention-dot" />}
           </button>
           <button onClick={() => setModal("example")} disabled={booting}>
-            Example
+            <FileText size={15} /> <span className="label">Example</span>
           </button>
         </div>
         <div className="output-actions">
           <button onClick={copyTitle} disabled={!plan.title || booting}>
             <Copy size={14} />
-            {copied === "title" ? "Copied!" : "Copy title"}
+            <span className="label">{copied === "title" ? "Copied!" : "Copy title"}</span>
           </button>
           <button
             onClick={copyBody}
@@ -924,7 +929,7 @@ export default function App() {
             title={canCopyBody ? "Copy formatted text; images become placement markers" : "Resolve the content issues shown in the preview before copying"}
           >
             <Copy size={14} />
-            {copied === "body" ? "Copied!" : "Copy body"}
+            <span className="label">{copied === "body" ? "Copied!" : "Copy body"}</span>
           </button>
           <button
             onClick={handoff}
@@ -939,7 +944,7 @@ export default function App() {
                 𝕏
               </span>
             )}{" "}
-            Create X draft <ArrowRight size={14} />
+            <span className="label">Create X draft</span> <ArrowRight size={14} className="draft-arrow" />
           </button>
           {(errors.length > 0 || renderError) && <button className="draft-issues-link" onClick={() => {
             setMobileView("preview");
@@ -1019,11 +1024,64 @@ export default function App() {
 
       <main className={"editor-workspace mobile-" + mobileView}>
         <section className="source-panel" aria-label="Markdown editor">
-          <div className="panel-heading">
-            <strong>
-              <Code2 size={15} /> Markdown
-            </strong>
-            <span>{documentPath.split("/").pop() || "Untitled.md"}</span>
+          <div className="panel-heading source-bar">
+            <div className="format-toolbar" aria-label="Markdown formatting">
+              <button
+                onClick={() => insert("## ", "", "Heading")}
+                title="Insert heading"
+                aria-label="Insert heading"
+              >
+                H₂
+              </button>
+              <button
+                onClick={() => insert("**", "**", "bold text")}
+                title="Bold (⌘/Ctrl+B)"
+                aria-label="Bold"
+              >
+                <Bold size={15} />
+              </button>
+              <button
+                onClick={() => insert("[", "](https://example.com)", "link text")}
+                title="Insert link"
+                aria-label="Insert link"
+              >
+                <Link size={15} />
+              </button>
+              <button
+                onClick={() => insert("\n- ", "\n", "List item")}
+                title="Insert list"
+                aria-label="Insert list"
+              >
+                <List size={16} />
+              </button>
+              <span className="toolbar-divider" />
+              <button
+                onClick={() =>
+                  insert(
+                    "\n\n| Column | Value |\n| --- | --- |\n| Item | Detail |\n\n",
+                  )
+                }
+              >
+                <Table2 size={15} /> Table
+              </button>
+              <button
+                onClick={() =>
+                  insert(
+                    "\n\n" +
+                      FENCE +
+                      "mermaid\nflowchart LR\n  A[Start] --> B[Finish]\n" +
+                      FENCE +
+                      "\n\n",
+                  )
+                }
+              >
+                <Network size={15} /> Diagram
+              </button>
+              <button onClick={() => imageInput.current?.click()}>
+                <ImageIcon size={15} /> Image
+              </button>
+            </div>
+            <span className="file-name">{documentPath.split("/").pop() || "Untitled.md"}</span>
             {handles.document && (
               <button
                 className={"reload-file " + (fileChanged ? "needs-attention" : "")}
@@ -1040,62 +1098,6 @@ export default function App() {
               aria-label="Save Markdown"
             >
               <ArrowDownToLine size={15} />
-            </button>
-          </div>
-          <div className="format-toolbar" aria-label="Markdown formatting">
-            <button
-              onClick={() => insert("## ", "", "Heading")}
-              title="Insert heading"
-              aria-label="Insert heading"
-            >
-              H₂
-            </button>
-            <button
-              onClick={() => insert("**", "**", "bold text")}
-              title="Bold (⌘/Ctrl+B)"
-              aria-label="Bold"
-            >
-              <Bold size={15} />
-            </button>
-            <button
-              onClick={() => insert("[", "](https://example.com)", "link text")}
-              title="Insert link"
-              aria-label="Insert link"
-            >
-              <Link size={15} />
-            </button>
-            <button
-              onClick={() => insert("\n- ", "\n", "List item")}
-              title="Insert list"
-              aria-label="Insert list"
-            >
-              <List size={16} />
-            </button>
-            <span className="toolbar-divider" />
-            <button
-              onClick={() =>
-                insert(
-                  "\n\n| Column | Value |\n| --- | --- |\n| Item | Detail |\n\n",
-                )
-              }
-            >
-              <Table2 size={15} /> Table
-            </button>
-            <button
-              onClick={() =>
-                insert(
-                  "\n\n" +
-                    FENCE +
-                    "mermaid\nflowchart LR\n  A[Start] --> B[Finish]\n" +
-                    FENCE +
-                    "\n\n",
-                )
-              }
-            >
-              <Network size={15} /> Diagram
-            </button>
-            <button onClick={() => imageInput.current?.click()}>
-              <ImageIcon size={15} /> Image
             </button>
           </div>
           <MarkdownEditor
@@ -1442,7 +1444,7 @@ export default function App() {
               : ""
         }
         aria-label={
-          modal === "images" ? "Images and diagrams" : "Article Studio dialog"
+          modal === "images" ? "Images and diagrams" : "md2xarticle dialog"
         }
         onCancel={() => setModal(null)}
         onClose={() => setModal(null)}
@@ -1734,7 +1736,7 @@ export default function App() {
                       </p>
                       <a
                         className="button-primary"
-                        href="https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh"
+                        href={COMPANION_URL}
                         target="_blank"
                         rel="noreferrer"
                       >
