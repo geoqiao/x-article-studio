@@ -39,22 +39,22 @@
   </head>
   <body class="website">
     <div class="website-app">
-    <section class="product-intro" aria-labelledby="product-title">
-      <div>
-        <h1 id="product-title">Convert Markdown to X Articles</h1>
-        <p>Prepare local images, tables and Mermaid diagrams in your browser.</p>
-        <p class="product-workflow">Paste or import → Preview → Copy formatted text or create an X draft</p>
-      </div>
-      <nav aria-label="Product information">
-        <a href="/support">Guide</a>
-        <a href="https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh">Chrome companion</a>
-        <a href="/privacy">Privacy</a>
-      </nav>
-    </section>
     <noscript><p class="no-script">Enable JavaScript to use the editor. The <a href="/support">guide</a> explains supported formats and the Chrome companion. Creating a draft requires an X account with Articles access; publishing happens in X.</p></noscript>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Crawlable header shown until the editor replaces it; keep in step with the header in App.tsx. -->
+      <header class="app-header">
+        <a class="brand" href="/"><img class="brand-icon" src="/logo.svg" alt="" width="28" height="28">md2xarticle</a>
+        <h1 class="app-description">Convert Markdown to X Articles</h1>
+        <nav class="header-links" aria-label="Product">
+          <a href="/support">Guide</a>
+          <a href="https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh">Chrome companion</a>
+          <a href="/privacy">Privacy</a>
+        </nav>
+      </header>
+    </div>
     </div>
     <section class="product-guide" aria-labelledby="guide-title">
+      <p class="product-lead">Prepare local images, tables and Mermaid diagrams in your browser. Paste or import → Preview → Copy formatted text or create an X draft.</p>
       <h2 id="guide-title">How to convert Markdown to an X Article</h2>
       <ol>
         <li><strong>Paste or import your Markdown.</strong> Use a <code>.md</code> file from Obsidian, VS Code or any other editor. The first H1 or frontmatter title becomes the article title, and you can edit it above the preview.</li>
