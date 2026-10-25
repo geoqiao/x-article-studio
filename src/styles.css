@@ -1613,3 +1613,20 @@ dialog::backdrop {
     display: none;
   }
 }
+
+/* Moving between the editor and the guide pages cross-fades; the header stays put. */
+.app-header {
+  view-transition-name: site-header;
+}
+@view-transition {
+  navigation: auto;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.18s;
+}
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}
