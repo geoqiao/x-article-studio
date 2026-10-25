@@ -1064,8 +1064,9 @@ export default function App() {
                     "\n\n| Column | Value |\n| --- | --- |\n| Item | Detail |\n\n",
                   )
                 }
+                title="Insert table"
               >
-                <Table2 size={15} /> Table
+                <Table2 size={15} /> <span className="label">Table</span>
               </button>
               <button
                 onClick={() =>
@@ -1077,11 +1078,12 @@ export default function App() {
                       "\n\n",
                   )
                 }
+                title="Insert Mermaid diagram"
               >
-                <Network size={15} /> Diagram
+                <Network size={15} /> <span className="label">Diagram</span>
               </button>
-              <button onClick={() => imageInput.current?.click()}>
-                <ImageIcon size={15} /> Image
+              <button onClick={() => imageInput.current?.click()} title="Insert image">
+                <ImageIcon size={15} /> <span className="label">Image</span>
               </button>
             </div>
             <span className="file-name">{documentPath.split("/").pop() || "Untitled.md"}</span>
