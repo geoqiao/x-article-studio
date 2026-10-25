@@ -56,7 +56,7 @@ const html = `<!doctype html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f4ef">
-  <title>Article Studio · Standalone preview</title>
+  <title>md2xarticle · Standalone preview</title>
   <link rel="icon" href="data:image/svg+xml;base64,${favicon}">
   <style>${css.replace(/<\/style/gi, "<\\/style")}</style>
 </head>

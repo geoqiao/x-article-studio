@@ -123,6 +123,6 @@ export async function exportArticle(prepared: PreparedArticle): Promise<Blob> {
   zip.file(`${safeFileStem(prepared.plan.title)}.md`, `---\ntitle: ${JSON.stringify(prepared.plan.title)}\n${coverField}---\n\n${markdown}`);
   zip.file('article-studio.json', JSON.stringify(prepared.bundle, null, 2));
   zip.file('compatibility.json', JSON.stringify({ checkedAt: prepared.bundle.createdAt, issues: prepared.issues }, null, 2));
-  zip.file('README.txt', 'Prepared with Article Studio.\nThe Markdown and assets/ folder are portable. Mermaid diagrams are static PNGs.\narticle-studio.json is the companion extension handoff bundle.\nNo content has been published by exporting this archive.\n');
+  zip.file('README.txt', 'Prepared with md2xarticle.\nThe Markdown and assets/ folder are portable. Mermaid diagrams are static PNGs.\narticle-studio.json is the companion extension handoff bundle.\nNo content has been published by exporting this archive.\n');
   return zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
 }

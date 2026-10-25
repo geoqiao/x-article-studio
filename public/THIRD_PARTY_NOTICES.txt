@@ -1,4 +1,4 @@
-Article Studio — third-party notices
+md2xarticle — third-party notices
 Generated from installed production dependencies on 2026-09-15.
 Some dependencies are only used by build tooling and may not appear in the browser bundle.
 No Kaitox branding or service affiliation is claimed.

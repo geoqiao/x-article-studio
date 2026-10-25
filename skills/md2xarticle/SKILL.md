@@ -7,7 +7,7 @@ description: Turn a finished Markdown article into an X (Twitter) Article draft 
 
 The user writes the article; this skill does the rest and ends with a draft URL. It never publishes: publishing stays a manual step in X. It never edits the user's files: conversions go to a temporary copy.
 
-Requirements: `node` 20+, `playwright-cli`, Chrome with the Playwright Extension, the [Article Studio X companion](https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh) installed, and an X account with Articles access signed in.
+Requirements: `node` 20+, `playwright-cli`, Chrome with the Playwright Extension, the [Chrome companion](https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh) installed, and an X account with Articles access signed in.
 
 ## Steps
 

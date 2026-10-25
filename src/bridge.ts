@@ -281,7 +281,7 @@ async function requestExtension<T extends BridgeStatus | BridgeResult | BridgeJo
       });
     };
     const timeoutId = window.setTimeout(() => {
-      finish(() => reject(new BridgeError('TIMEOUT', 'The Article Studio extension did not respond.')));
+      finish(() => reject(new BridgeError('TIMEOUT', 'The Chrome companion did not respond.')));
     }, action === 'stage' ? STAGE_TIMEOUT_MS : STATUS_TIMEOUT_MS);
 
     window.addEventListener('message', onMessage);
