@@ -1,6 +1,6 @@
 # Markdown → X Article compatibility
 
-Updated: **2026-10-08**. Scope: Article Studio web editor using `@kaitox/x-article@0.6.0`. “Native” describes the generated X representation, not a successful live-account test.
+Updated: **2026-10-08**. Scope: md2xarticle web editor using `@kaitox/x-article@0.6.0`. “Native” describes the generated X representation, not a successful live-account test.
 
 ## The three priorities
 
