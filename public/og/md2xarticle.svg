@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <style>
+    @font-face { font-family: "DM Sans"; font-weight: 400; src: url(/fonts/dm-sans-400-normal.woff2) format("woff2"); }
+    @font-face { font-family: "DM Sans"; font-weight: 600; src: url(/fonts/dm-sans-600-normal.woff2) format("woff2"); }
+    @font-face { font-family: "DM Sans"; font-weight: 700; src: url(/fonts/dm-sans-700-normal.woff2) format("woff2"); }
+    @font-face { font-family: "DM Mono"; font-weight: 400; src: url(/fonts/dm-mono-400-normal.woff2) format("woff2"); }
+    @font-face { font-family: "DM Mono"; font-weight: 500; src: url(/fonts/dm-mono-500-normal.woff2) format("woff2"); }
+  </style>
+  <rect width="1200" height="630" fill="#f5f7fa"/>
+  <g transform="translate(64 52) scale(.9375)">
+    <rect width="64" height="64" rx="14" fill="#096bea"/>
+    <path d="M20 9h17l13 13v30a4 4 0 0 1-4 4H20a4 4 0 0 1-4-4V13a4 4 0 0 1 4-4Z" fill="#fff"/>
+    <path d="M37 9v9a4 4 0 0 0 4 4h9L37 9Z" fill="#b7d3fb"/>
+    <path d="M28.5 28.5v18M37.5 28.5v18M25 34h16M25 41h16" stroke="#096bea" stroke-width="3.6" stroke-linecap="round"/>
+  </g>
+  <g font-family="DM Sans, Arial, sans-serif">
+    <text x="140" y="92" font-size="32" font-weight="700" letter-spacing="-0.6" fill="#18202b">md2xarticle</text>
+    <text x="62" y="262" font-size="84" font-weight="700" letter-spacing="-3" fill="#18202b">Markdown to</text>
+    <text x="62" y="350" font-size="84" font-weight="700" letter-spacing="-3" fill="#096bea">X Articles</text>
+    <text x="64" y="410" font-size="26" fill="#586474">Your writing workflow. Ready for an X draft.</text>
+    <g font-size="20" font-weight="600" fill="#30445d">
+      <rect x="64" y="448" width="170" height="46" rx="23" fill="#e6edf6"/>
+      <text x="88" y="478">Local images</text>
+      <rect x="248" y="448" width="108" height="46" rx="23" fill="#e6edf6"/>
+      <text x="272" y="478">Tables</text>
+      <rect x="370" y="448" width="212" height="46" rx="23" fill="#e6edf6"/>
+      <text x="394" y="478">Mermaid diagrams</text>
+    </g>
+    <path d="M64 540h1072" stroke="#dce2eb"/>
+    <text x="64" y="587" font-size="22" fill="#586474">Import · Preview · Copy or create a draft</text>
+    <text x="1136" y="587" font-size="22" font-weight="600" text-anchor="end" fill="#096bea">md2xarticle.com</text>
+  </g>
+  <g>
+    <rect x="684" y="150" width="206" height="300" rx="16" fill="#fff" stroke="#dce2eb"/>
+    <g font-family="DM Mono, monospace" font-size="17" font-weight="500" fill="#18202b">
+      <text x="706" y="196" fill="#096bea"># A calmer way</text>
+      <text x="706" y="236" fill="#586474">Paste your</text>
+      <text x="706" y="262" fill="#586474">**Markdown**</text>
+      <text x="706" y="302" fill="#096bea">## Three things</text>
+      <text x="706" y="342" fill="#586474">![image](a.png)</text>
+      <text x="706" y="382" fill="#586474">| Tables | ok |</text>
+      <text x="706" y="422" fill="#586474">```mermaid</text>
+    </g>
+    <g stroke="#096bea" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M906 300h30M926 288l12 12-12 12"/>
+    </g>
+    <rect x="954" y="150" width="182" height="300" rx="16" fill="#fff" stroke="#dce2eb"/>
+    <rect x="974" y="176" width="124" height="14" rx="5" fill="#18202b"/>
+    <rect x="974" y="210" width="142" height="8" rx="4" fill="#c9d3df"/>
+    <rect x="974" y="228" width="118" height="8" rx="4" fill="#c9d3df"/>
+    <rect x="974" y="256" width="142" height="84" rx="8" fill="#dbe9fb"/>
+    <path d="M974 330l30-34 22 22 16-14 34 26z" fill="#6fa6ee"/>
+    <circle cx="1096" cy="274" r="8" fill="#fff"/>
+    <rect x="974" y="358" width="142" height="8" rx="4" fill="#c9d3df"/>
+    <rect x="974" y="376" width="96" height="8" rx="4" fill="#c9d3df"/>
+    <rect x="974" y="404" width="142" height="26" rx="6" fill="#f2f5f8" stroke="#dce2eb"/>
+  </g>
+</svg>

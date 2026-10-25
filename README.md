@@ -1,4 +1,4 @@
-# Article Studio
+# md2xarticle
 
 Status: **prototype** · Started: **2026-09-15**
 
@@ -48,7 +48,7 @@ Test-coverage notes are under **How to use**. Main browser workflows were tested
 
 ## Connect the companion
 
-Install the [Article Studio X companion](https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh) from the Chrome Web Store for the production website. Its public 0.1.0 listing was verified on September 19, 2026; version 0.1.1 was submitted that day and is pending review with automatic publication after approval. Refresh the website after installation or update. The store build is limited to the production origin; local development uses the unpacked build below.
+Install the [Chrome companion](https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh) from the Chrome Web Store for the production website. Its public 0.1.0 listing was verified on September 19, 2026; version 0.1.1 was submitted that day and is pending review with automatic publication after approval. Refresh the website after installation or update. The store build is limited to the production origin; local development uses the unpacked build below.
 
 Build with `pnpm build:extension`, then open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `dist-extension/`. The app also offers the generated `article-studio-bridge.zip`; extract it before loading.
 
@@ -141,7 +141,7 @@ Use `pnpm run deploy` explicitly: `pnpm deploy` is pnpm's separate workspace-pac
 
 The public app serves code and fonts; Markdown parsing, image preparation, and saved drafts stay in the browser. Opening a remote image URL still makes a request to its host. Prepared article content goes to X only from the companion: on the confirmed review action, or on **Create X draft** when automatic creation is enabled there.
 
-The homepage includes a visible, static product introduction in `index.html`; the editor mounts separately below it. Crawlers receive the title, workflow, links and application metadata without executing JavaScript. The 1200×630 social image has an editable SVG source in `public/og/`.
+The homepage ships a static header with the H1 and product links in `index.html`; the editor replaces it on mount, and the crawlable guide follows below. Crawlers receive the title, workflow, links and application metadata without executing JavaScript. The 1200×630 social image has an editable SVG source in `public/og/md2xarticle.svg`.
 
 `wrangler.www.jsonc` defines a separate redirect-only Worker for `www.md2xarticle.com`. Run `pnpm run deploy:www --dry-run` to validate it and `pnpm run deploy:www` to provision/update that custom domain and its managed TLS certificate. It sends a 308 to the HTTPS apex while retaining paths and queries. The editor remains a static-assets-only Worker. This separate configuration is not deployed by the existing main-branch build command.
 
@@ -157,7 +157,7 @@ Google accepted the sitemap submission and the homepage indexing request. The ho
 
 ## Implementation and evidence
 
-The monochrome X-and-article-lines logo is available as [SVG](public/logo.svg) and [512-pixel PNG](public/logo.png). The header and favicon share the SVG; the standalone preview embeds it.
+The logo (a document page marked with the Markdown `#`) is available as [SVG](public/logo.svg) and [512-pixel PNG](public/logo.png). The header and favicon share the SVG; the standalone preview embeds it.
 
 - [How Kaitox works and what this app changes](docs/architecture.md)
 - [Syntax support, restrictions, and primary sources](docs/compatibility.md)

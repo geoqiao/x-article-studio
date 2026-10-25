@@ -35,7 +35,7 @@ const endnotes = flag('--endnotes');
 const allowWikilinks = flag('--allow-wikilinks');
 const articlePath = args[0] && resolve(args[0]);
 if (!articlePath || !existsSync(articlePath)) {
-  console.error('Usage: prepare.mjs <article.md> [--cover <image>] [--images <folder>] [--flatten-lists] [--endnotes] [--allow-wikilinks] [--url <Article Studio URL>]');
+  console.error('Usage: prepare.mjs <article.md> [--cover <image>] [--images <folder>] [--flatten-lists] [--endnotes] [--allow-wikilinks] [--url <md2xarticle URL>]');
   process.exit(2);
 }
 const imagesDirectory = imagesOption && resolve(imagesOption);
