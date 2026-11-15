@@ -146,6 +146,11 @@ export default function App() {
   const imageInput = useRef<HTMLInputElement>(null);
   const coverInput = useRef<HTMLInputElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
+  const backdropPointer = useRef<number | null>(null);
+  const outsideDialog = (event: React.PointerEvent<HTMLDialogElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
+  };
   const activeAssets = useRef<PreparedArticle | undefined>(undefined);
   const importSequence = useRef(0);
   const plan = useMemo(
@@ -352,6 +357,7 @@ export default function App() {
     return () => { cancelled = true; clearInterval(timer); document.removeEventListener("visibilitychange", check); };
   }, [documentHandle]);
   useEffect(() => {
+    backdropPointer.current = null;
     if (modal && !dialog.current?.open) dialog.current?.showModal();
     if (!modal && dialog.current?.open) dialog.current.close();
   }, [modal]);
@@ -1448,14 +1454,21 @@ export default function App() {
               ? "wide-dialog"
               : ""
         }
-        aria-label={
-          modal === "images" ? "Images and diagrams" : "md2xarticle dialog"
-        }
+        aria-labelledby="article-dialog-title"
+        closedby="any"
         onCancel={() => setModal(null)}
         onClose={() => setModal(null)}
-        onClick={(event) => {
-          if (event.target === event.currentTarget) setModal(null);
+        onPointerDown={(event) => {
+          if ("closedBy" in HTMLDialogElement.prototype) return;
+          backdropPointer.current = event.isPrimary && event.button === 0 && outsideDialog(event) ? event.pointerId : null;
         }}
+        onPointerUp={(event) => {
+          if ("closedBy" in HTMLDialogElement.prototype) return;
+          const dismiss = backdropPointer.current === event.pointerId && outsideDialog(event);
+          backdropPointer.current = null;
+          if (dismiss) setModal(null);
+        }}
+        onPointerCancel={() => { backdropPointer.current = null; }}
       >
         <div className="dialog-inner">
           <button
@@ -1467,7 +1480,7 @@ export default function App() {
           </button>
           {modal === "images" && (
             <>
-              <h2>Images & diagrams</h2>
+              <h2 id="article-dialog-title">Images & diagrams</h2>
               <p className="dialog-lead">
                 Add your images here. Tables and Mermaid diagrams are generated
                 automatically.
@@ -1705,7 +1718,7 @@ export default function App() {
           )}
           {modal === "connect" && (
             <>
-              <h2>Create a draft with all your images</h2>
+              <h2 id="article-dialog-title">Create a draft with all your images</h2>
               <p className="dialog-lead">
                 The companion uploads your images and inserts them in the right
                 places. You review the draft before publishing.
@@ -1803,7 +1816,7 @@ export default function App() {
           )}
           {modal === "help" && (
             <>
-              <h2>From Markdown to X</h2>
+              <h2 id="article-dialog-title">From Markdown to X</h2>
               <ol className="setup-steps">
                 <li>
                   <strong>Paste or import your Markdown</strong>
@@ -1874,7 +1887,7 @@ export default function App() {
           )}
           {modal === "formats" && (
             <>
-              <h2>Format support</h2>
+              <h2 id="article-dialog-title">Format support</h2>
               <p className="dialog-lead">
                 These are this importer’s mappings. Final rendering and account
                 access depend on X.
@@ -1906,7 +1919,7 @@ export default function App() {
           )}
           {(modal === "new" || modal === "example") && (
             <>
-              <h2>
+              <h2 id="article-dialog-title">
                 {modal === "new" ? "Start a new article?" : "Load the example?"}
               </h2>
               <p className="dialog-lead">
@@ -1928,7 +1941,7 @@ export default function App() {
           )}
           {modal === "copy" && manualCopy && (
             <>
-              <h2>{manualCopy.kind === "body" ? "Copy formatted body" : "Copy title"}</h2>
+              <h2 id="article-dialog-title">{manualCopy.kind === "body" ? "Copy formatted body" : "Copy title"}</h2>
               <p className="dialog-lead">
                 {manualCopy.kind === "body"
                   ? "Automatic copying was blocked. Select the formatted body below and press ⌘C on Mac or Ctrl+C on Windows. Then paste normally into the X Articles body field."

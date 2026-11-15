@@ -165,3 +165,7 @@ The logo (a document page marked with the Markdown `#`) is available as [SVG](pu
 - [Third-party licenses](public/THIRD_PARTY_NOTICES.txt)
 
 Core packages are pinned to `@kaitox/x-article@0.6.0`, `marked@18.0.5`, and `mermaid@11.16.0`. Kaitox’s repository, npm release, and browser-store release are distinct artifacts; this project uses the npm converter/client, not its full extension or branding.
+
+## Browser support policy
+
+The web editor targets current stable Chrome, Edge, Firefox, and Safari, including iOS Safari. This is a development target; verification records identify the browsers actually tested. File and folder pickers use capability detection with ordinary file inputs as the fallback. New scheduling APIs must retain a lightweight fallback. The companion and automatic X draft handoff target desktop Chromium with the extension installed; the standalone HTML remains self-contained for local editing and export.

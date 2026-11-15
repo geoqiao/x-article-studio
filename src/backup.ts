@@ -1,10 +1,10 @@
-import JSZip from 'jszip';
 import { safeFileStem } from './plan';
 import type { SavedDraft } from './storage';
 import type { Issue, LocalAssetMap } from './types';
 
 /** A recoverable source archive, independent of conversion or image readiness. */
 export async function exportDraftBackup(draft: Omit<SavedDraft, 'files'>, files: LocalAssetMap, issues: Issue[]): Promise<Blob> {
+  const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
   zip.file('source.md', draft.markdown);
   const stored = new Map<File, string>();

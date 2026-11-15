@@ -1,5 +1,4 @@
 import DOMPurify from 'dompurify';
-import JSZip from 'jszip';
 import { renderPreviewHtml } from '@kaitox/x-article';
 import { COVER_KEY, fetchImageFile, MAX_TOTAL_BYTES, resolveLocalFile, sha256, toBase64 } from './files';
 import { normalizeImage } from './images';
@@ -58,15 +57,17 @@ export async function prepareArticle(plan: ArticlePlan, files: LocalAssetMap, do
       if (cached?.input !== input) {
         cache.delete(cacheKey);
         let blob: Blob;
-        if (spec.kind === 'mermaid') blob = await renderDiagram(spec.code || '');
-        else if (spec.kind === 'table') blob = await renderTable(spec.headers || [], spec.rows || []);
+        if (spec.kind === 'mermaid') blob = await renderDiagram(spec.code || '', signal);
+        else if (spec.kind === 'table') blob = await renderTable(spec.headers || [], spec.rows || [], signal);
         else if (file) blob = file;
         else if (/^https?:\/\//i.test(spec.source)) blob = await fetchImageFile(spec.source, signal);
         else {
           reason = 'missing-file';
           throw new Error(isCover ? 'Cover file not selected. Choose the cover or match its folder.' : 'Image file not selected. Choose the file or match its folder.');
         }
+        signal.throwIfAborted();
         const normalized = await normalizeImage(blob, spec.label);
+        signal.throwIfAborted();
         blob = normalized.blob;
         cached = { input, blob, width: normalized.width, height: normalized.height, note: normalized.note, sha256: await sha256(blob), base64: await toBase64(blob) };
         if (signal.aborted) throw new DOMException('Preparation cancelled.', 'AbortError');
@@ -113,6 +114,7 @@ export function disposeArticle(article: PreparedArticle): void { disposeAssets(a
 
 export async function exportArticle(prepared: PreparedArticle): Promise<Blob> {
   if (prepared.issues.some((i) => i.severity === 'error')) throw new Error('Resolve the blocking issues before exporting a complete article.');
+  const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
   const destinations = new Map(prepared.assets.map((a) => [a.spec.source, `assets/${a.fileName}`]));
   const markdown = rewriteImageDestinations(prepared.bundle.markdown, destinations);
