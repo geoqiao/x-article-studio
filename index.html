@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f5f4ef" />
+    <meta name="theme-color" content="#f7f8fa" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="canonical" href="https://md2xarticle.com/" />
     <meta name="description" content="Convert Markdown for X Articles with local images, tables and Mermaid diagrams. Preview in your browser, copy formatted text or create a draft with the Chrome companion." />
@@ -39,47 +39,123 @@
   </head>
   <body class="website">
     <div class="website-app">
-    <noscript><p class="no-script">Enable JavaScript to use the editor. The <a href="/support">guide</a> explains supported formats and the Chrome companion. Creating a draft requires an X account with Articles access; publishing happens in X.</p></noscript>
-    <div id="root">
-      <!-- Crawlable header shown until the editor replaces it; keep in step with the header in App.tsx. -->
-      <header class="app-header">
-        <a class="brand" href="/"><img class="brand-icon" src="/logo.svg" alt="" width="28" height="28">md2xarticle</a>
-        <h1 class="app-description">Convert Markdown to X Articles</h1>
-        <nav class="header-links" aria-label="Product">
+      <noscript><p class="no-script">Enable JavaScript to use the editor. The <a href="/support">guide</a> explains supported formats and the Chrome companion. Creating a draft requires an X account with Articles access; publishing happens in X.</p></noscript>
+      <div id="root">
+        <!-- Crawlable header shown until the editor replaces it. -->
+        <header class="app-header">
+          <div class="header-left">
+            <a class="brand" href="/"><img class="brand-icon" src="/logo.svg" alt="" width="26" height="26"><span>md2xarticle</span></a>
+            <h1 class="sr-only">Convert Markdown to X Articles</h1>
+          </div>
+          <nav class="output-actions" aria-label="Product">
+            <a href="/support">Guide</a>
+            <a href="https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh">Chrome companion</a>
+            <a href="/privacy">Privacy</a>
+          </nav>
+        </header>
+      </div>
+    </div>
+
+    <div class="product-guide-band" id="product-guide">
+      <section class="product-guide" aria-labelledby="guide-title">
+        <div class="guide-intro">
+          <p class="guide-eyebrow">How it works</p>
+          <h2 id="guide-title">How to convert Markdown to an X Article</h2>
+          <p class="product-lead">Prepare local images, tables and Mermaid diagrams right in your browser. Paste or import, review the live preview, then copy formatted text or create an X draft.</p>
+        </div>
+
+        <ol class="steps-grid">
+          <li class="guide-card step-card">
+            <span class="step-num" aria-hidden="true">01</span>
+            <h3>Paste or import Markdown</h3>
+            <p>Use a <code>.md</code> file from Obsidian, VS Code or any other editor. The first H1 or frontmatter title becomes the article title, and you can edit it inline at the top of the preview.</p>
+          </li>
+          <li class="guide-card step-card">
+            <span class="step-num" aria-hidden="true">02</span>
+            <h3>Attach local images once</h3>
+            <p>Browsers cannot read local paths inside a Markdown file on their own, so choose the image folder in <strong>Images &amp; diagrams</strong>. Only images referenced by the article are attached.</p>
+          </li>
+          <li class="guide-card step-card">
+            <span class="step-num" aria-hidden="true">03</span>
+            <h3>Review the live preview</h3>
+            <p>Mermaid code blocks render as crisp 2× PNG images. Tables stay native or convert to PNG. Anything that would lose content is flagged with a direct line link to your source.</p>
+          </li>
+          <li class="guide-card step-card">
+            <span class="step-num" aria-hidden="true">04</span>
+            <h3>Copy or create an X draft</h3>
+            <p>Copy the title and formatted body into X, or use the free <a href="https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh">Chrome companion</a> to create an unpublished X Article draft with images in place.</p>
+          </li>
+        </ol>
+
+        <div class="guide-section">
+          <h2>What converts</h2>
+          <ul class="capabilities-grid">
+            <li class="guide-card capability-card">
+              <h3>Formatted text</h3>
+              <p>H2 and H3 headings, bold, italic, strikethrough, links, single-level lists, quotes, dividers and code blocks.</p>
+              <a class="card-link" href="/support#formats">Full format support →</a>
+            </li>
+            <li class="guide-card capability-card">
+              <h3>Tables</h3>
+              <p>Kept as native Markdown tables in the companion draft, or rendered as clean PNG images when pasting manually.</p>
+              <a class="card-link" href="/x-article-tables">Adding tables to X Articles →</a>
+            </li>
+            <li class="guide-card capability-card">
+              <h3>Mermaid diagrams</h3>
+              <p>Flowcharts, sequence diagrams and other Mermaid code blocks automatically render as 2× resolution PNG images.</p>
+              <a class="card-link" href="/mermaid-diagrams-x-articles">Mermaid diagrams in X Articles →</a>
+            </li>
+            <li class="guide-card capability-card">
+              <h3>Local images</h3>
+              <p>Local or public PNG, JPEG and WebP files, matched from your folder and placed where they appear in your Markdown.</p>
+              <a class="card-link" href="/markdown-images-x-articles">Markdown images in X Articles →</a>
+            </li>
+          </ul>
+          <p class="guide-note">Not converted yet: footnotes, raw HTML, GIF, SVG, video and image ALT text. These are flagged in the preview instead of dropped silently. See the <a href="/support#formats">full format guide</a> for details.</p>
+        </div>
+
+        <div class="guide-section faq-section" aria-labelledby="faq-heading">
+          <h2 id="faq-heading">Frequently asked questions</h2>
+          <div class="faq-list">
+            <details class="faq-item">
+              <summary>Is md2xarticle free?</summary>
+              <div class="faq-answer">
+                <p>Yes. The editor, copying, ZIP export and the Chrome companion are free to use.</p>
+              </div>
+            </details>
+            <details class="faq-item">
+              <summary>Do I need the Chrome extension?</summary>
+              <div class="faq-answer">
+                <p>No. You can copy the title and formatted body without it. The desktop Chrome companion is only needed to upload images and create the draft automatically.</p>
+              </div>
+            </details>
+            <details class="faq-item">
+              <summary>Where is my article stored?</summary>
+              <div class="faq-answer">
+                <p>In this browser. Markdown and images are prepared locally. They are sent to X only when you confirm draft creation in the companion, or straight from Create X draft if you turned on that option in the companion. See the <a href="/privacy">privacy policy</a>.</p>
+              </div>
+            </details>
+            <details class="faq-item">
+              <summary>Does it publish to X for me?</summary>
+              <div class="faq-answer">
+                <p>No. It creates an unpublished draft in your signed-in X account, and you review and publish it in X. Your account needs access to X Articles, which X controls. X can change its editor, so check each draft before publishing.</p>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <footer class="guide-footer" aria-label="Footer">
+          <a href="#top">Back to editor</a>
           <a href="/support">Guide</a>
+          <a href="/x-article-tables">Tables</a>
+          <a href="/mermaid-diagrams-x-articles">Mermaid diagrams</a>
+          <a href="/markdown-images-x-articles">Local images</a>
           <a href="https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh">Chrome companion</a>
-          <a href="/privacy">Privacy</a>
-        </nav>
-      </header>
+          <a href="/privacy">Privacy policy</a>
+        </footer>
+      </section>
     </div>
-    </div>
-    <section class="product-guide" aria-labelledby="guide-title">
-      <p class="product-lead">Prepare local images, tables and Mermaid diagrams in your browser. Paste or import → Preview → Copy formatted text or create an X draft.</p>
-      <h2 id="guide-title">How to convert Markdown to an X Article</h2>
-      <ol>
-        <li><strong>Paste or import your Markdown.</strong> Use a <code>.md</code> file from Obsidian, VS Code or any other editor. The first H1 or frontmatter title becomes the article title, and you can edit it above the preview.</li>
-        <li><strong>Attach local images.</strong> A browser cannot open the image paths inside a Markdown file on its own, so choose the image folder once in <strong>Images &amp; diagrams</strong>. Only images the article references are attached.</li>
-        <li><strong>Review the preview.</strong> Mermaid code blocks are rendered as PNG images. Tables stay native or become PNG images. Anything that would lose content is flagged with a line link to the source.</li>
-        <li><strong>Copy or create a draft.</strong> Copy the title and formatted body into X, or use the free <a href="https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh">Chrome companion</a> to create an unpublished X Article draft with images in place. You publish from X.</li>
-      </ol>
-      <h2>What converts</h2>
-      <ul>
-        <li><strong>Formatted text:</strong> H2 and H3 headings, bold, italic, strikethrough, links, single-level lists, quotes, dividers and code blocks.</li>
-        <li><strong>Tables:</strong> kept as a native Markdown table in the draft, or rendered as PNG images when you paste instead. <a href="/x-article-tables">Adding tables to X Articles</a></li>
-        <li><strong>Mermaid diagrams:</strong> flowcharts and other Mermaid code blocks become PNG images at 2× resolution. <a href="/mermaid-diagrams-x-articles">Mermaid diagrams in X Articles</a></li>
-        <li><strong>Images:</strong> local or public PNG, JPEG and WebP files, placed where they appear in your Markdown. <a href="/markdown-images-x-articles">Markdown images in X Articles</a></li>
-      </ul>
-      <p>Not converted yet: footnotes, raw HTML, GIF, SVG, video and image ALT text. These are listed in the preview instead of being dropped silently. The <a href="/support#formats">full format guide</a> covers the details.</p>
-      <h2>Frequently asked questions</h2>
-      <h3>Is md2xarticle free?</h3>
-      <p>Yes. The editor, copying, ZIP export and the Chrome companion are free to use.</p>
-      <h3>Do I need the Chrome extension?</h3>
-      <p>No. You can copy the title and body without it. The companion is only needed to upload images and create the draft automatically.</p>
-      <h3>Where is my article stored?</h3>
-      <p>In this browser. Markdown and images are prepared locally. They are sent to X only when you confirm draft creation in the companion, or straight from Create X draft if you turned on that option in the companion. See the <a href="/privacy">privacy policy</a>.</p>
-      <h3>Does it publish to X for me?</h3>
-      <p>No. It creates a draft in your signed-in X account, and you review and publish it in X. Your account needs access to X Articles, which X controls. X can change its editor, so check each draft before publishing.</p>
-    </section>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

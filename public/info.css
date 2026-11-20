@@ -33,15 +33,21 @@
   font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   color-scheme: light;
-  --ink: #18202b;
-  --text: #3a4656;
-  --muted: #5b6676;
-  --line: #e2e6eb;
-  --surface: #f6f8fb;
-  --blue: #096bea;
-  --blue-dark: #0049a8;
+  --bg: #ffffff;
+  --surface: #f7f8fa;
+  --surface-elevated: #ffffff;
+  --ink: #0f1419;
+  --ink-hover: #272c30;
+  --text: #2c3540;
+  --muted: #536471;
+  --border: #e5e8ec;
+  --line: var(--border);
+  --accent: #1d6ce0;
+  --accent-dark: #1453b5;
+  --blue: var(--accent);
+  --blue-dark: var(--accent-dark);
   color: var(--text);
-  background: #fff;
+  background: var(--bg);
 }
 * {
   box-sizing: border-box;
@@ -55,8 +61,8 @@ body {
 
 /* Header: same height, colours and brand as the editor header. */
 .site-header {
-  border-bottom: 1px solid var(--line);
-  background: #fbfcfe;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
   view-transition-name: site-header;
 }
 .site-header-inner {
@@ -65,7 +71,7 @@ body {
   justify-content: space-between;
   gap: 12px;
   max-width: 1040px;
-  height: 52px;
+  height: 56px;
   margin: 0 auto;
   padding: 0 22px;
 }
@@ -73,7 +79,7 @@ body {
   display: flex;
   align-items: center;
   gap: 9px;
-  color: #121820;
+  color: var(--ink);
   font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.5px;
@@ -91,16 +97,16 @@ body {
 .site-header nav a:not(.button) {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
+  min-height: 36px;
   padding: 0 10px;
   border-radius: 6px;
-  color: #3f4a59;
+  color: var(--text);
   font-size: 14px;
   text-decoration: none;
   transition: background-color 0.12s;
 }
 .site-header nav a:not(.button):hover {
-  background: #eef1f5;
+  background: #eef0f4;
 }
 .site-header nav a[aria-current="page"] {
   color: var(--ink);
@@ -109,7 +115,7 @@ body {
 .site-header .button {
   margin-left: 6px;
   white-space: nowrap;
-  min-height: 34px;
+  min-height: 36px;
   padding: 0 14px;
   font-size: 14px;
 }
@@ -169,9 +175,9 @@ strong {
 
 /* Links: a quiet underline that firms up on hover; clear ring on focus. */
 a {
-  color: var(--blue);
+  color: var(--accent);
   text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--blue) 38%, transparent);
+  text-decoration-color: color-mix(in srgb, var(--accent) 38%, transparent);
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
   transition:
@@ -179,27 +185,27 @@ a {
     text-decoration-color 0.12s;
 }
 a:hover {
-  color: var(--blue-dark);
+  color: var(--accent-dark);
   text-decoration-color: currentColor;
   text-decoration-thickness: 2px;
 }
 a:focus-visible,
 [tabindex="0"]:focus-visible {
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
   border-radius: 4px;
 }
 
-/* Buttons share the editor's primary and outline styles. */
+/* Buttons share the editor's ink-black primary and outline styles. */
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 44px;
   padding: 0 20px;
-  border: 1px solid var(--blue);
+  border: 1px solid var(--ink);
   border-radius: 8px;
-  background: var(--blue);
+  background: var(--ink);
   color: #fff;
   font-size: 15px;
   font-weight: 600;
@@ -211,8 +217,8 @@ a:focus-visible,
     transform 0.08s;
 }
 .button:hover {
-  background: var(--blue-dark);
-  border-color: var(--blue-dark);
+  background: var(--ink-hover);
+  border-color: var(--ink-hover);
   color: #fff;
 }
 .button:active {
@@ -220,19 +226,19 @@ a:focus-visible,
 }
 .button-outline {
   background: #fff;
-  border-color: #cfd5de;
+  border-color: #cfd6de;
   color: var(--ink);
 }
 .button-outline:hover {
-  background: #f4f6f9;
-  border-color: #b9c2cf;
+  background: var(--surface);
+  border-color: #b5bfc9;
   color: var(--ink);
 }
 
 /* Code */
 code {
   padding: 1px 6px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--border);
   border-radius: 5px;
   background: var(--surface);
   color: var(--ink);
@@ -243,7 +249,7 @@ pre {
   margin: 0 0 24px;
   padding: 16px 18px;
   overflow-x: auto;
-  border: 1px solid var(--line);
+  border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface);
   font-size: 14px;
@@ -261,7 +267,7 @@ pre code {
 .table-wrap {
   margin: 0 0 24px;
   overflow-x: auto;
-  border: 1px solid var(--line);
+  border: 1px solid var(--border);
   border-radius: 10px;
 }
 table {
@@ -273,7 +279,7 @@ table {
 th,
 td {
   padding: 11px 14px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
   text-align: left;
   vertical-align: top;
 }
@@ -304,13 +310,13 @@ tbody tr:hover td {
   max-width: 580px;
   margin: 0 auto;
   padding: 20px 0 48px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--border);
   font-size: 14px;
 }
 .site-footer a {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
+  min-height: 36px;
   padding: 0 8px;
 }
 .site-footer a:first-child {
@@ -326,8 +332,8 @@ tbody tr:hover td {
   margin: 0 0 16px;
   padding: 2px 10px;
   border-radius: 999px;
-  background: #e8f1fe;
-  color: #0a57bd;
+  background: #eef5ff;
+  color: var(--accent-dark);
   font-family: "DM Mono", ui-monospace, monospace;
   font-size: 14px;
   font-weight: 400;
@@ -344,6 +350,7 @@ tbody tr:hover td {
     font-size: 16px;
   }
   .site-header-inner {
+    height: 52px;
     padding: 0 12px;
   }
   .brand {

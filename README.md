@@ -1,6 +1,6 @@
 # md2xarticle
 
-Status: **prototype** · Started: **2026-09-15**
+Status: **active** · Started: **2026-09-15**
 
 Live app: <https://md2xarticle.com> · Repository: <https://github.com/geoqiao/x-article-studio>
 

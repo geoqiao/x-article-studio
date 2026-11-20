@@ -1,10 +1,45 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { ImagePlus, Undo2, Wrench } from "lucide-react";
 import type { AssetSpec } from "./types";
+
+type ReplaceButtonProps = {
+  asset: AssetSpec;
+  loaded: boolean;
+  onReplace: (source: string, file: File) => void;
+};
+
+function PreviewReplaceButton({ asset, loaded, onReplace }: ReplaceButtonProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <button
+        type="button"
+        className="file-action-button"
+        onClick={() => inputRef.current?.click()}
+      >
+        <ImagePlus size={13} aria-hidden="true" />{" "}
+        {loaded ? "Replace image" : "Choose image"}
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
+        hidden
+        aria-label={`Preview replace ${asset.label}`}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) onReplace(asset.source, file);
+          event.target.value = "";
+        }}
+      />
+    </>
+  );
+}
 
 type Props = {
   html: string;
   assets: AssetSpec[];
+  hideTitle?: boolean;
   canUndo: (source: string) => boolean;
   onReplace: (source: string, file: File) => void;
   onUndo: (source: string) => void;
@@ -14,6 +49,7 @@ type Props = {
 export function ArticlePreview({
   html,
   assets,
+  hideTitle = false,
   canUndo,
   onReplace,
   onUndo,
@@ -23,7 +59,13 @@ export function ArticlePreview({
     const template = document.createElement("template");
     template.innerHTML = html; // Only the sanitized renderer output enters this component.
     const root = template.content.querySelector(".xp-article");
-    return [...(root?.childNodes || [])].map((node) => {
+    const nodes = [...(root?.childNodes || [])].filter((node) => {
+      if (hideTitle && node instanceof Element && node.matches("h1.xp-title")) {
+        return false;
+      }
+      return true;
+    });
+    return nodes.map((node) => {
       const holder = document.createElement("div");
       holder.append(node.cloneNode(true));
       const figure =
@@ -37,7 +79,7 @@ export function ArticlePreview({
         loaded: !!figure?.querySelector("img"),
       };
     });
-  }, [html]);
+  }, [html, hideTitle]);
 
   return (
     <div className="rendered-article">
@@ -63,44 +105,26 @@ export function ArticlePreview({
               <figcaption className="preview-image-tools">
                 <span title={asset.source}>{asset.label}</span>
                 <div>
-                  <label
-                    className="file-button"
-                    tabIndex={0}
-                    role="button"
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        event.currentTarget.querySelector("input")?.click();
-                      }
-                    }}
-                  >
-                    <ImagePlus size={13} />{" "}
-                    {block.loaded ? "Replace image" : "Choose image"}
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
-                      hidden
-                      aria-label={`Preview replace ${asset.label}`}
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (file) onReplace(asset.source, file);
-                        event.target.value = "";
-                      }}
-                    />
-                  </label>
+                  <PreviewReplaceButton
+                    asset={asset}
+                    loaded={block.loaded}
+                    onReplace={onReplace}
+                  />
                   {canUndo(asset.source) && (
                     <button
+                      type="button"
                       aria-label={`Undo change to ${asset.label}`}
                       onClick={() => onUndo(asset.source)}
                     >
-                      <Undo2 size={13} /> Undo change
+                      <Undo2 size={13} aria-hidden="true" /> Undo change
                     </button>
                   )}
                   <button
+                    type="button"
                     aria-label={`Fix image ${asset.label}`}
                     onClick={() => onFix(asset)}
                   >
-                    <Wrench size={13} /> Fix image
+                    <Wrench size={13} aria-hidden="true" /> Fix image
                   </button>
                 </div>
               </figcaption>
