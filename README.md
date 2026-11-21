@@ -2,11 +2,23 @@
 
 Status: **active** · Started: **2026-09-15**
 
-Live app: <https://md2xarticle.com> · Repository: <https://github.com/geoqiao/x-article-studio>
+- **Web editor:** <https://md2xarticle.com>
+- **Agent skill (Claude Code, Codex & coding agents):** [`skills/md2xarticle`](skills/md2xarticle/SKILL.md) · [Setup guide](https://md2xarticle.com/x-article-agent-skill)
+- **Chrome companion:** [Chrome Web Store](https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh) (v0.1.2)
+- **Repository:** <https://github.com/geoqiao/x-article-studio>
 
-A Markdown-to-X-Articles web app inspired by MD2X’s editing workflow and built on Kaitox’s MIT-licensed article converter. It prepares ordinary images, renders Mermaid to PNG, preserves native tables (or renders them to PNG), and passes a complete document to a small Chromium companion.
+A local-first Markdown-to-X-Articles web app and coding-agent skill inspired by MD2X’s editing workflow and built on Kaitox’s MIT-licensed article converter. It matches local and Obsidian (`![[image]]`) images, renders Mermaid diagrams to 2× PNG, keeps **native X tables, native code blocks, and standalone X post embeds** (with optional PNG tables), uploads an optional cover image, and creates an unpublished X Article draft through a small Chromium companion.
 
 **The local editor, exports and companion work. Draft creation in a real X account was confirmed by the owner on 2026-10-01.** Final rendering of every format remains under X's control. X’s private editor interfaces and account access remain the live integration boundary.
+
+### Quick install: Agent skill
+
+Use [`skills/md2xarticle`](skills/md2xarticle/SKILL.md) to turn a finished `.md` file into an unpublished X Article draft from Claude Code, Codex, or any agent that supports `SKILL.md` (no npm install required; see [md2xarticle.com/x-article-agent-skill](https://md2xarticle.com/x-article-agent-skill)):
+
+```sh
+git clone https://github.com/geoqiao/x-article-studio.git
+ln -s "$PWD/x-article-studio/skills/md2xarticle" ~/.agents/skills/md2xarticle
+```
 
 ## Run locally
 
@@ -48,11 +60,11 @@ Test-coverage notes are under **How to use**. Main browser workflows were tested
 
 ## Connect the companion
 
-Install the [Chrome companion](https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh) from the Chrome Web Store for the production website. The public listing serves version 0.1.1. Version 0.1.2 (covers and the optional Create drafts without this review setting) was submitted on October 15, 2026 and is pending review with automatic publication after approval. Refresh the website after installation or update. The store build is limited to the production origin; local development uses the unpacked build below.
+Install the [Chrome companion](https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh) from the Chrome Web Store for the production website. The public listing offers version 0.1.2, updated October 15, 2026. It supports covers and the optional **Create drafts without this review** setting. Refresh the website after installation or update. The store build is limited to the production origin; local development uses the unpacked build below.
 
 Build with `pnpm build:extension`, then open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `dist-extension/`. The app also offers the generated `article-studio-bridge.zip`; extract it before loading.
 
-Companion 0.1.1 automatically reuses or opens <https://x.com/compose/articles> after confirmation in its review page, waits for the tab to load, then continues creation using the X session. You do not need to open X beforehand. If sign-in is needed, finish it in the X tab and retry from the review. Your account still needs Articles access. The published 0.1.0 companion requires opening X manually until its store update is available; the current unpacked build includes the improvement.
+The companion automatically reuses or opens <https://x.com/compose/articles> after confirmation in its review page, waits for the tab to load, then continues creation using the X session. You do not need to open X beforehand. If sign-in is needed, finish it in the X tab and retry from the review. Your account still needs Articles access.
 
 The default development build accepts `http://127.0.0.1:4318` and `http://localhost:4318`. Production builds also accept `https://md2xarticle.com`. These are separate browser storage origins; drafts and attachments do not automatically move between them.
 
@@ -62,7 +74,7 @@ See [extension instructions](extension/README.md) and [architecture](docs/archit
 
 ## Agent skill
 
-[`skills/md2xarticle`](skills/md2xarticle/SKILL.md) lets a coding agent take a finished Markdown file to an X draft: it checks the local images and cover, loads everything into the website through `playwright-cli` in your own Chrome, creates the draft, and reports the draft URL. It needs companion 0.1.2 with **Create drafts without this review** ticked once; until then it stops at the review for your click. Copy or symlink the directory into your agent's skills folder.
+[`skills/md2xarticle`](skills/md2xarticle/SKILL.md) (setup guide: <https://md2xarticle.com/x-article-agent-skill>) lets a coding agent take a finished Markdown file to an X draft: it checks the local images and cover, loads everything into the website through `playwright-cli` in your own Chrome, creates the draft, and reports the draft URL. It needs companion 0.1.2 with **Create drafts without this review** ticked once; until then it stops at the review for your click. Copy or symlink the directory into your agent's skills folder.
 
 ## Format support
 
@@ -151,7 +163,7 @@ Website visit statistics use the reviewed local client in `public/telemetry.js`,
 
 The [md2xarticle.com Domain property](https://search.google.com/search-console?resource_id=sc-domain%3Amd2xarticle.com) was verified on September 16, 2026 under the owner's Google account. Cloudflare Domain Connect added the Google verification TXT record through a one-time authorization. Keep that DNS record to retain verification; it is managed outside this repository.
 
-[robots.txt](public/robots.txt) allows crawling and advertises [sitemap.xml](public/sitemap.xml). The sitemap lists the homepage, the three task guides (`/x-article-tables`, `/mermaid-diagrams-x-articles`, `/markdown-images-x-articles`), `/support`, and `/privacy`; these are the public pages' final URLs after Cloudflare's HTML redirects. The homepage keeps the editor on the first screen and follows it with a static, crawlable guide and FAQ. Guide claims must stay consistent with [docs/compatibility.md](docs/compatibility.md). The deployment for `849486e` passed its build. The live sitemap returned HTTP 200 with `application/xml` and passed XML validation.
+[robots.txt](public/robots.txt) allows crawling and advertises [sitemap.xml](public/sitemap.xml). The sitemap lists the homepage, the four task guides (`/x-article-tables`, `/mermaid-diagrams-x-articles`, `/markdown-images-x-articles`, `/x-article-agent-skill`), `/support`, and `/privacy`; these are the public pages' final URLs after Cloudflare's HTML redirects. The homepage keeps the editor on the first screen and follows it with a static, crawlable guide and FAQ. Guide claims must stay consistent with [docs/compatibility.md](docs/compatibility.md). The deployment for `849486e` passed its build. The live sitemap returned HTTP 200 with `application/xml` and passed XML validation.
 
 Google accepted the sitemap submission and the homepage indexing request. The homepage was added to Google's priority crawl queue; inclusion in search results is not yet confirmed. The sitemap report initially showed “Couldn't fetch.” Google's subsequent live URL test reported “URL is available to Google,” and its tested source contained the correct three-URL XML. The sitemap was resubmitted once after that successful live fetch; its report still showed the earlier fetch status at handoff. Check the [Sitemaps report](https://search.google.com/search-console/sitemaps?resource_id=sc-domain%3Amd2xarticle.com) after Google reprocesses it.
 

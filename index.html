@@ -91,8 +91,8 @@
           <h2>What converts</h2>
           <ul class="capabilities-grid">
             <li class="guide-card capability-card">
-              <h3>Formatted text</h3>
-              <p>H2 and H3 headings, bold, italic, strikethrough, links, single-level lists, quotes, dividers and code blocks.</p>
+              <h3>Formatted text &amp; native blocks</h3>
+              <p>H2 and H3 headings, bold, italic, strikethrough, links, single-level lists, quotes, dividers, native X code blocks and standalone X post embeds.</p>
               <a class="card-link" href="/support#formats">Full format support →</a>
             </li>
             <li class="guide-card capability-card">
@@ -106,12 +106,21 @@
               <a class="card-link" href="/mermaid-diagrams-x-articles">Mermaid diagrams in X Articles →</a>
             </li>
             <li class="guide-card capability-card">
-              <h3>Local images</h3>
-              <p>Local or public PNG, JPEG and WebP files, matched from your folder and placed where they appear in your Markdown.</p>
+              <h3>Local images &amp; cover</h3>
+              <p>Local PNG, JPEG, WebP, SVG (rendered to PNG), Obsidian <code>![[image]]</code> embeds and an optional cover image, matched from your folder and placed in order.</p>
               <a class="card-link" href="/markdown-images-x-articles">Markdown images in X Articles →</a>
             </li>
           </ul>
-          <p class="guide-note">Not converted yet: footnotes, raw HTML, GIF, SVG, video and image ALT text. These are flagged in the preview instead of dropped silently. See the <a href="/support#formats">full format guide</a> for details.</p>
+          <p class="guide-note">Footnotes convert to endnotes and simple nested lists flatten in one click. Not converted yet: raw HTML, GIF, video and image ALT text. Unsupported constructs are flagged in the preview instead of dropped silently. See the <a href="/support#formats">full format guide</a> for details.</p>
+        </div>
+
+        <div class="guide-section">
+          <h2>Publish from coding agents</h2>
+          <div class="guide-card capability-card">
+            <h3>Agent skill for Claude Code &amp; Codex</h3>
+            <p>Use the open-source <code>skills/md2xarticle</code> skill to validate a finished Markdown file locally, resolve Obsidian or local images and cover, and create an unpublished X Article draft through your signed-in Chrome session.</p>
+            <a class="card-link" href="/x-article-agent-skill">Set up the Markdown to X Article agent skill →</a>
+          </div>
         </div>
 
         <div class="guide-section faq-section" aria-labelledby="faq-heading">
@@ -150,6 +159,7 @@
           <a href="/x-article-tables">Tables</a>
           <a href="/mermaid-diagrams-x-articles">Mermaid diagrams</a>
           <a href="/markdown-images-x-articles">Local images</a>
+          <a href="/x-article-agent-skill">Agent skill</a>
           <a href="https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh">Chrome companion</a>
           <a href="/privacy">Privacy policy</a>
         </footer>

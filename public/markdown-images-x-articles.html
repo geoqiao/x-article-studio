@@ -10,16 +10,16 @@
 <li>With the <a href="https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh">Chrome companion</a>, choose <strong>Create X draft</strong>. Images are uploaded to your signed-in X account and placed in order. Without the companion, copy the body and add the images in X where the image markers show.</li></ol>
 <h2>Obsidian notes</h2>
 <p>Obsidian image paths are usually relative to the vault or to the note. Select the vault folder, or the attachments folder you use, and md2xarticle matches the paths inside it.</p>
-<p>md2xarticle reads standard Markdown image links like <code>![Chart](attachments/chart.png)</code>. Obsidian's wikilink embeds, such as <code>![[chart.png]]</code>, are not recognized as images. In Obsidian, turn off <strong>Settings → Files and links → Use [[Wikilinks]]</strong> so new embeds use Markdown links, and update existing embeds before importing.</p>
+<p>md2xarticle reads both standard Markdown image links like <code>![Chart](attachments/chart.png)</code> and Obsidian image embeds like <code>![[chart.png]]</code> (matching by file name in your chosen folder). Note wikilinks such as <code>[[Other Note]]</code> reach X as literal text and are flagged with line numbers (you can turn that warning off under <strong>How to use</strong>).</p>
 <h2>Supported images</h2>
-<ul><li>PNG, JPEG and WebP, up to 5 MiB each.</li>
-<li>Up to 40 images and 20 MiB of image data per draft. Mermaid diagrams and PNG tables count toward the total.</li>
+<ul><li>PNG, JPEG, WebP and SVG (rendered to PNG in the browser). Sources up to 40 MiB are accepted; images over 5 MiB are downscaled automatically.</li>
+<li>Up to 40 images and 20 MiB of prepared image data per draft. Mermaid diagrams and PNG tables count toward the total.</li>
 <li>Public web images work when the host allows browser downloads (CORS). Images behind a login, private hosts or redirects need a local replacement.</li>
 <li>If the same image is used more than once, it is uploaded once and every placement is kept.</li></ul>
 <h2>Limits</h2>
 <ul><li>Images must sit in their own paragraph or in normal text. Images inside lists, headings, quotes, links or tables are blocked. Move them out first.</li>
-<li>GIF, SVG and video are not supported yet. Add them in X after creating the draft.</li>
+<li>GIF and video are not supported yet. Add them in X after creating the draft.</li>
 <li>ALT text stays in your Markdown source and is not set as the image description in X. For a cover image, add <code>cover: path</code> to the frontmatter or choose one under <strong>Images</strong>; companion 0.1.2 or later sets it on the draft.</li></ul>
-<h2>Related guides</h2><ul><li><a href="/x-article-tables">Add a table to an X Article</a></li><li><a href="/mermaid-diagrams-x-articles">Add Mermaid diagrams to X Articles</a></li><li><a href="/support">Full Markdown to X Articles guide</a></li></ul>
+<h2>Related guides</h2><ul><li><a href="/x-article-tables">Add a table to an X Article</a></li><li><a href="/mermaid-diagrams-x-articles">Add Mermaid diagrams to X Articles</a></li><li><a href="/x-article-agent-skill">Markdown to X Article agent skill</a></li><li><a href="/support">Full Markdown to X Articles guide</a></li></ul>
 <p class="date">md2xarticle is an independent tool and is not affiliated with or endorsed by X Corp. X controls Articles access and final rendering; check each draft in X before publishing.</p>
 </main><footer class="site-footer"><a href="/">Open md2xarticle</a><a href="/support">Guide</a><a href="/privacy">Privacy policy</a></footer></body></html>

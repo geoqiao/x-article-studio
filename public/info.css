@@ -276,6 +276,15 @@ table {
   font-size: 15px;
   line-height: 1.5;
 }
+caption {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+}
 th,
 td {
   padding: 11px 14px;
@@ -283,20 +292,28 @@ td {
   text-align: left;
   vertical-align: top;
 }
-th {
+thead th {
   background: var(--surface);
   color: var(--ink);
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
 }
+tbody th,
 td:first-child {
   color: var(--ink);
   font-weight: 500;
 }
+tbody th {
+  background: transparent;
+  font-size: 15px;
+  white-space: normal;
+}
+tbody tr:last-child th,
 tbody tr:last-child td {
   border-bottom: 0;
 }
+tbody tr:hover th,
 tbody tr:hover td {
   background: #fafbfd;
 }
