@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "minimum_chrome_version": "116",
-  "name": "Article Studio X companion",
-  "version": "0.1.2",
-  "description": "Turn Markdown, images, tables, and Mermaid diagrams from Article Studio into X Article drafts, with a review before uploading.",
+  "name": "Markdown to X Articles — md2xarticle",
+  "version": "0.1.3",
+  "description": "Convert Markdown, Obsidian images, native tables, code blocks, and Mermaid diagrams into unpublished X Article drafts.",
   "homepage_url": "https://md2xarticle.com/",
   "icons": {
     "16": "icons/icon-16.png",
@@ -33,7 +33,7 @@
     }
   ],
   "action": {
-    "default_title": "Open Article Studio",
+    "default_title": "Open md2xarticle",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png",

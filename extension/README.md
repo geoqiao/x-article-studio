@@ -1,4 +1,4 @@
-# Article Studio X companion
+# Markdown to X Articles — md2xarticle (Chrome companion)
 
 This Manifest V3 extension connects Article Studio to X's article editor (Chrome 116+).
 The app content script accepts only request-ID messages from the exact app origin and
