@@ -1,23 +1,121 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import JSZip from 'jszip';
 import { createPlan } from '../src/plan';
 import { exportDraftBackup } from '../src/backup';
-import { disposeAssets, prepareArticle, type AssetCache } from '../src/prepare';
+import { disposeAssets, exportArticle, prepareArticle, type AssetCache } from '../src/prepare';
 import { renderDiagram } from '../src/render';
 import type { AssetProgress } from '../src/types';
+import { MAX_IMAGE_BYTES } from '../src/files';
 
 vi.mock('dompurify', () => ({ default: { sanitize: (html: string) => html } }));
 vi.mock('../src/render', () => ({ renderDiagram: vi.fn(), renderTable: vi.fn() }));
 const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1]);
-const bitmap = vi.fn(async () => ({ width: 10, height: 20, close() {} }));
+const bitmap = vi.fn(async () => ({ width: 20, height: 10, close() {} }));
+const paddedPng = new Blob([png, Uint8Array.of(2)], { type: 'image/png' });
+
+function mockCanvas(output: Blob = paddedPng) {
+  const context = { fillStyle: '', fillRect: vi.fn(), drawImage: vi.fn() };
+  const canvas = {
+    width: 0, height: 0, getContext: () => context,
+    toBlob: vi.fn((callback: BlobCallback, _mime: string) => callback(output)),
+  };
+  vi.stubGlobal('document', { createElement: () => canvas });
+  return { canvas, context };
+}
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
+  bitmap.mockImplementation(async () => ({ width: 20, height: 10, close() {} }));
   vi.stubGlobal('createImageBitmap', bitmap);
   vi.mocked(renderDiagram).mockResolvedValue(new Blob([png], { type: 'image/png' }));
 });
 
+afterEach(() => vi.unstubAllGlobals());
+
 describe('asset preparation and source backups', () => {
+  it('pads the reported tall diagram and keeps preview, bundle and ZIP bytes identical', async () => {
+    const { canvas, context } = mockCanvas();
+    const tall = { width: 1600, height: 3439, close: vi.fn() };
+    bitmap.mockResolvedValueOnce(tall);
+    const cache: AssetCache = new Map();
+    const markdown = '```mermaid\nflowchart TD\nStart-->Finish\n```';
+    const prepare = (content: string) => prepareArticle(createPlan(content), new Map(), '', () => {}, new AbortController().signal, cache);
+    const result = await prepare(markdown);
+    const edited = await prepare(markdown + '\n\nMore text');
+    const [asset] = result.assets;
+    expect(asset).toMatchObject({ width: 2614, height: 3439, diagram: { contentWidth: 1600, contentHeight: 3439, paddedWidth: 2614 } });
+    expect(canvas.toBlob).toHaveBeenCalledTimes(1);
+    expect(context.fillStyle).toBe('#fff');
+    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 2614, 3439);
+    expect(context.drawImage).toHaveBeenCalledWith(tall, 507, 0, 1600, 3439);
+    expect(tall.close).toHaveBeenCalledOnce();
+    expect(edited.assets[0].diagram).toEqual(asset.diagram);
+    expect(edited.assets[0].blob).toBe(asset.blob);
+    expect(result.issues).toContainEqual(expect.objectContaining({ id: 'tall-mermaid-1', severity: 'warning' }));
+    expect(edited.issues).toContainEqual(expect.objectContaining({ id: 'tall-mermaid-1', severity: 'warning' }));
+    expect(result.previewHtml).toContain(asset.url);
+    const preview = new Uint8Array(await (await fetch(asset.url)).arrayBuffer());
+    const zip = await JSZip.loadAsync(await (await exportArticle(result)).arrayBuffer());
+    expect(await zip.file(`assets/${asset.fileName}`)!.async('uint8array')).toEqual(preview);
+    expect(Buffer.from(result.bundle.assets[0].base64, 'base64')).toEqual(Buffer.from(preview));
+    expect(result.bundle.assets[0].sha256).toBe(asset.sha256);
+    disposeAssets([...result.assets, ...edited.assets]);
+  });
+
+  it('only pads qualifying Mermaid assets and preserves independent warnings in a mixed article', async () => {
+    const { canvas } = mockCanvas();
+    bitmap.mockResolvedValueOnce({ width: 300, height: 400, close() {} })
+      .mockResolvedValueOnce({ width: 900, height: 500, close() {} })
+      .mockResolvedValueOnce({ width: 700, height: 1000, close() {} })
+      .mockResolvedValueOnce({ width: 400, height: 1000, close() {} })
+      .mockResolvedValueOnce({ width: 1600, height: 3439, close() {} })
+      .mockResolvedValueOnce({ width: 1600, height: 3439, close() {} });
+    const diagrams = ['A', 'B', 'C', 'D', 'E'].map(id => ['```mermaid', 'flowchart TD', `${id}-->X`, '```'].join('\n'));
+    const markdown = [...diagrams, '![Portrait](photo.png)'].join('\n\n');
+    const result = await prepareArticle(createPlan(markdown), new Map([['photo.png', new File([png], 'photo.png')]]), '', () => {}, new AbortController().signal);
+    expect(result.assets.map(({ width, height }) => [width, height])).toEqual([
+      [300, 400], [900, 500], [760, 1000], [760, 1000], [2614, 3439], [1600, 3439],
+    ]);
+    expect(result.issues.map(issue => issue.id)).toEqual(['tall-mermaid-4', 'tall-mermaid-5']);
+    expect(canvas.toBlob).toHaveBeenCalledTimes(3);
+    disposeAssets(result.assets);
+  });
+
+  it('limits the canvas for extreme aspect ratios while preserving scale and PNG compression', async () => {
+    const oversized = new Blob([png, new Uint8Array(MAX_IMAGE_BYTES)], { type: 'image/png' });
+    const { canvas, context } = mockCanvas();
+    canvas.toBlob.mockImplementationOnce(callback => callback(oversized))
+      .mockImplementationOnce(callback => callback(oversized))
+      .mockImplementationOnce(callback => callback(oversized))
+      .mockImplementationOnce(callback => callback(oversized));
+    const tall = { width: 1200, height: 25_000, close: vi.fn() };
+    bitmap.mockResolvedValueOnce(tall);
+    const result = await prepareArticle(createPlan('```mermaid\nflowchart TD\nA-->B\n```'), new Map(), '', () => {}, new AbortController().signal);
+    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 3113, 4096);
+    expect(context.drawImage).toHaveBeenNthCalledWith(1, tall, 1458, 0, 1200 * (4096 / 25000), 4096);
+    expect(tall.close).toHaveBeenCalledOnce();
+    expect(canvas.toBlob.mock.calls.map(([, mime]) => mime)).toEqual(Array(5).fill('image/png'));
+    expect(result.assets[0]).toMatchObject({ width: 770, height: 1013, diagram: { contentWidth: 1200, contentHeight: 25000, paddedWidth: 19000 } });
+    expect(result.assets[0].blob.size).toBeLessThanOrEqual(MAX_IMAGE_BYTES);
+    disposeAssets(result.assets);
+  });
+
+  it('releases the bitmap and avoids caching a cancelled canvas export', async () => {
+    const { canvas } = mockCanvas();
+    const tall = { width: 1600, height: 3439, close: vi.fn() };
+    bitmap.mockResolvedValueOnce(tall);
+    const controller = new AbortController();
+    canvas.toBlob.mockImplementationOnce(callback => {
+      controller.abort();
+      callback(paddedPng);
+    });
+    const cache: AssetCache = new Map();
+    const pending = prepareArticle(createPlan('```mermaid\nflowchart TD\nA-->B\n```'), new Map(), '', () => {}, controller.signal, cache);
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    expect(tall.close).toHaveBeenCalledOnce();
+    expect(cache.size).toBe(0);
+  });
+
   it('reuses unchanged images and diagrams across text/title edits, with independent object URLs', async () => {
     const file = new File([png], 'photo.png');
     const files = new Map([['photo.png', file]]);

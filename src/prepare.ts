@@ -1,13 +1,13 @@
 import DOMPurify from 'dompurify';
 import { renderPreviewHtml } from '@kaitox/x-article';
 import { COVER_KEY, fetchImageFile, MAX_TOTAL_BYTES, resolveLocalFile, sha256, toBase64 } from './files';
-import { normalizeImage } from './images';
+import { normalizeImage, type NormalizedImage } from './images';
 import { renderDiagram, renderTable } from './render';
 import { safeFileStem } from './plan';
 import { rewriteImageDestinations } from './portable';
 import type { ArticlePlan, AssetProgress, AssetSpec, Issue, LocalAssetMap, PreparedArticle, PreparedAsset } from './types';
 
-type CachedAsset = { input: File | string; blob: Blob; width: number; height: number; sha256: string; base64: string; note?: string };
+type CachedAsset = NormalizedImage & { input: File | string; sha256: string; base64: string };
 export type AssetCache = Map<string, CachedAsset>;
 
 export function safePreview(plan: ArticlePlan, assets: PreparedAsset[] = []): string {
@@ -66,21 +66,20 @@ export async function prepareArticle(plan: ArticlePlan, files: LocalAssetMap, do
           throw new Error(isCover ? 'Cover file not selected. Choose the cover or match its folder.' : 'Image file not selected. Choose the file or match its folder.');
         }
         signal.throwIfAborted();
-        const normalized = await normalizeImage(blob, spec.label);
+        const normalized = await normalizeImage(blob, spec.label, spec.kind === 'mermaid' ? { articleDiagram: true, signal } : undefined);
         signal.throwIfAborted();
-        blob = normalized.blob;
-        cached = { input, blob, width: normalized.width, height: normalized.height, note: normalized.note, sha256: await sha256(blob), base64: await toBase64(blob) };
+        cached = { ...normalized, input, sha256: await sha256(normalized.blob), base64: await toBase64(normalized.blob) };
         if (signal.aborted) throw new DOMException('Preparation cancelled.', 'AbortError');
         cache.set(cacheKey, cached);
       }
-      const { blob, width, height, sha256: hash, base64, note } = cached;
+      const { blob, width, height, sha256: hash, base64, note, diagram } = cached;
       if (total + blob.size > MAX_TOTAL_BYTES) throw new Error('Images exceed 20 MiB in total. Resize or remove an image.');
       if (note) issues.push({ id: `converted-${spec.id}`, severity: 'warning', message: note, line: spec.line });
       total += blob.size;
       const mime = blob.type;
       const ext = mime === 'image/jpeg' ? 'jpg' : mime.split('/')[1];
       const fileName = `${spec.id}-${hash.slice(0, 8)}.${ext}`;
-      const prepared: PreparedAsset = { spec, blob, url: URL.createObjectURL(blob), width, height, fileName, sha256: hash };
+      const prepared: PreparedAsset = { spec, blob, url: URL.createObjectURL(blob), width, height, fileName, sha256: hash, diagram };
       if (isCover) {
         cover = prepared;
         bundleCover = { source: COVER_KEY, fileName, mime, base64, sha256: hash };
@@ -89,9 +88,10 @@ export async function prepareArticle(plan: ArticlePlan, files: LocalAssetMap, do
       } else {
         assets.push(prepared);
         bundleAssets.push({ source: spec.source, fileName, mime, base64, sha256: hash });
-        if (width > 2400 || height > 5000) issues.push({ id: `readability-${spec.id}`, severity: 'warning', message: `Check “${spec.label}” at phone width; large images can make labels hard to read.`, line: spec.line });
-        // A portrait diagram three times taller than wide shrinks to unreadable text on a phone.
-        if (spec.kind === 'mermaid' && height > width * 3) issues.push({ id: `tall-${spec.id}`, severity: 'warning', message: `“${spec.label}” is ${width} × ${height}, which is very tall on a phone. Try flowchart LR, or split the diagram.`, line: spec.line });
+        if ((diagram?.contentWidth ?? width) > 2400 || height > 5000) issues.push({ id: `readability-${spec.id}`, severity: 'warning', message: `Check “${spec.label}” at phone width; large images can make labels hard to read.`, line: spec.line });
+        if (diagram?.paddedWidth && diagram.contentWidth / diagram.paddedWidth < 2 / 3) {
+          issues.push({ id: `tall-${spec.id}`, severity: 'warning', message: 'White space was added so X can show the whole diagram. Text may look small on phones. Try shorter labels or split the diagram into stages.', line: spec.line });
+        }
       }
       onProgress({ id: spec.id, state: 'ready' });
     } catch (error) {

@@ -1310,6 +1310,17 @@ svg {
   color: var(--accent);
 }
 
+.xp-article p.diagram-preview-note {
+  margin: 12px 0 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--warning-border);
+  border-radius: 6px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 /* Formatting Notes */
 .format-notes {
   font-size: 12px;

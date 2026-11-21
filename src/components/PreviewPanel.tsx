@@ -114,6 +114,7 @@ export function PreviewPanel({
   onDisableWikilinkWarning,
 }: Props) {
   const displayTitle = title || plan.title || "Untitled article";
+  const formattingWarnings = warnings.filter((issue) => !issue.id.startsWith("tall-mermaid-"));
 
   // Keep auto-growing textarea height in sync across browsers lacking CSS field-sizing.
   useLayoutEffect(() => {
@@ -396,6 +397,7 @@ export function PreviewPanel({
             <ArticlePreview
               html={previewHtml}
               assets={plan.assets}
+              warnings={warnings}
               hideTitle
               canUndo={canUndoImage}
               onReplace={onReplaceImage}
@@ -406,12 +408,12 @@ export function PreviewPanel({
         )}
       </div>
 
-      {warnings.length > 0 && (
+      {formattingWarnings.length > 0 && (
         <details className="format-notes">
           <summary>
-            {warnings.length} formatting note{warnings.length === 1 ? "" : "s"}
+            {formattingWarnings.length} formatting note{formattingWarnings.length === 1 ? "" : "s"}
           </summary>
-          {warnings.map((issue, index) => (
+          {formattingWarnings.map((issue, index) => (
             <div className="format-note" key={index}>
               <button type="button" onClick={() => onJumpToLine(issue.line)}>
                 {issue.message} <span>Line {issue.line}</span>

@@ -6,7 +6,9 @@ export type PlanOptions = { /** Warn about Obsidian [[wikilinks]] that would rea
 export type ArticlePlan = { title: string; markdown: string; assets: AssetSpec[]; issues: Issue[]; counts: { images: number; tables: number; mermaid: number }; wordCount: number; cover?: { source: string; line: number }; frontmatter?: { count: number; used: string[] } };
 export type BundleAsset = { source: string; fileName: string; mime: string; base64: string; sha256: string };
 export type DraftBundle = { schemaVersion: 1; jobId: string; title: string; markdown: string; assets: BundleAsset[]; createdAt: string; cover?: BundleAsset };
-export type PreparedAsset = { spec: AssetSpec; blob: Blob; url: string; width: number; height: number; fileName: string; sha256: string };
+/** Original diagram pixels and the padded width at the same scale, if padded. */
+export type DiagramDimensions = { contentWidth: number; contentHeight: number; paddedWidth?: number };
+export type PreparedAsset = { spec: AssetSpec; blob: Blob; url: string; width: number; height: number; fileName: string; sha256: string; diagram?: DiagramDimensions };
 export type PreparedArticle = { plan: ArticlePlan; bundle: DraftBundle; assets: PreparedAsset[]; cover?: PreparedAsset; previewHtml: string; issues: Issue[] };
 export type AssetProgress = { id: string; state: 'preparing' | 'ready' | 'error'; message?: string; reason?: 'missing-file' };
 export type LocalAssetMap = Map<string, File>;

@@ -1,6 +1,6 @@
-import { useMemo, useRef } from "react";
+import { Fragment, useMemo, useRef } from "react";
 import { ImagePlus, Undo2, Wrench } from "lucide-react";
-import type { AssetSpec } from "./types";
+import type { AssetSpec, Issue } from "./types";
 
 type ReplaceButtonProps = {
   asset: AssetSpec;
@@ -39,6 +39,7 @@ function PreviewReplaceButton({ asset, loaded, onReplace }: ReplaceButtonProps) 
 type Props = {
   html: string;
   assets: AssetSpec[];
+  warnings: Issue[];
   hideTitle?: boolean;
   canUndo: (source: string) => boolean;
   onReplace: (source: string, file: File) => void;
@@ -49,6 +50,7 @@ type Props = {
 export function ArticlePreview({
   html,
   assets,
+  warnings,
   hideTitle = false,
   canUndo,
   onReplace,
@@ -86,12 +88,17 @@ export function ArticlePreview({
       <article className="xp-article">
         {blocks.map((block, index) => {
           const asset = assets.find((item) => item.id === block.assetId);
+          const diagramWarning = asset?.kind === "mermaid"
+            ? warnings.find((issue) => issue.id === `tall-${asset.id}`)
+            : undefined;
           if (!asset || asset.kind !== "image")
             return (
-              <div
-                key={index}
-                dangerouslySetInnerHTML={{ __html: block.html }}
-              />
+              <Fragment key={index}>
+                {diagramWarning && (
+                  <p className="diagram-preview-note">{diagramWarning.message}</p>
+                )}
+                <div dangerouslySetInnerHTML={{ __html: block.html }} />
+              </Fragment>
             );
           return (
             <figure

@@ -1,9 +1,14 @@
 import { MAX_IMAGE_BYTES, MAX_SOURCE_BYTES, sniffImage } from './files';
+import type { DiagramDimensions } from './types';
 
-export type NormalizedImage = { blob: Blob; width: number; height: number; note?: string };
+export type NormalizedImage = { blob: Blob; width: number; height: number; note?: string; diagram?: DiagramDimensions };
 
 /** Longest edge after downscaling. X shows article images far narrower than this. */
 const MAX_EDGE = 2400;
+// Retain the detail of typical 2× diagrams while limiting the padded canvas.
+const MAX_PADDED_DIAGRAM_EDGE = 4096;
+const ARTICLE_MIN_RATIO = 3 / 4;
+const DIAGRAM_PADDED_RATIO = 0.76;
 const mib = (bytes: number) => (bytes / 1048576).toFixed(1);
 
 function checkDimensions(width: number, height: number): void {
@@ -23,7 +28,7 @@ async function encode(draw: (ctx: CanvasRenderingContext2D) => void, width: numb
 }
 
 /** Re-encode a raster image until it fits the per-image limit. PNG falls back to JPEG for photos. */
-async function shrink(blob: Blob, mime: string, width: number, height: number): Promise<{ blob: Blob; width: number; height: number }> {
+async function shrink(blob: Blob, mime: string, width: number, height: number, keepPng = false): Promise<{ blob: Blob; width: number; height: number }> {
   let target = mime;
   let scale = Math.min(1, MAX_EDGE / Math.max(width, height));
   for (let attempt = 0; attempt < 8; attempt++) {
@@ -34,7 +39,7 @@ async function shrink(blob: Blob, mime: string, width: number, height: number): 
       const out = await encode((ctx) => ctx.drawImage(bitmap, 0, 0, w, h), w, h, target, target === 'image/png' ? undefined : 0.86);
       if (out.size <= MAX_IMAGE_BYTES) return { blob: out, width: w, height: h };
     } finally { bitmap.close(); }
-    if (target === 'image/png' && attempt >= 1) target = 'image/jpeg';
+    if (target === 'image/png' && !keepPng && attempt >= 1) target = 'image/jpeg';
     else scale *= 0.75;
   }
   throw new Error('Image could not be reduced below 5 MiB. Resize or recompress it before attaching.');
@@ -65,19 +70,42 @@ export async function rasterizeSvg(blob: Blob): Promise<{ blob: Blob; width: num
  * Verify an image and make it acceptable to X: typed bytes, known dimensions,
  * SVG rendered to PNG, oversized files downscaled. The note explains any change.
  */
-export async function normalizeImage(blob: Blob, label: string): Promise<NormalizedImage> {
+export async function normalizeImage(blob: Blob, label: string, options?: { articleDiagram: true; signal: AbortSignal }): Promise<NormalizedImage> {
+  options?.signal.throwIfAborted();
   if (blob.size > MAX_SOURCE_BYTES) throw new Error('Image is larger than 40 MiB. Resize it before attaching.');
   const mime = await sniffImage(blob);
   if (mime === 'image/svg+xml') {
     const result = await rasterizeSvg(blob);
     return { ...result, note: `“${label}” is an SVG and was rendered as a ${result.width} × ${result.height} PNG. Check it in the preview.` };
   }
-  const typed = new Blob([blob], { type: mime });
+  let typed = new Blob([blob], { type: mime });
   const bitmap = await createImageBitmap(typed);
-  const { width, height } = bitmap;
-  bitmap.close();
-  checkDimensions(width, height);
-  if (typed.size <= MAX_IMAGE_BYTES) return { blob: typed, width, height };
-  const result = await shrink(typed, mime, width, height);
-  return { ...result, note: `“${label}” was ${mib(typed.size)} MiB and was downscaled to ${result.width} × ${result.height} (${mib(result.blob.size)} MiB) to fit X’s 5 MiB limit.` };
+  let { width, height } = bitmap;
+  const diagram: DiagramDimensions | undefined = options && { contentWidth: width, contentHeight: height };
+  try {
+    options?.signal.throwIfAborted();
+    if (diagram && width / height < ARTICLE_MIN_RATIO) {
+      diagram.paddedWidth = Math.ceil(height * DIAGRAM_PADDED_RATIO);
+      height = Math.min(height, MAX_PADDED_DIAGRAM_EDGE);
+      width = Math.ceil(height * DIAGRAM_PADDED_RATIO);
+      const contentWidth = bitmap.width * (height / bitmap.height);
+      const left = Math.floor((width - contentWidth) / 2);
+      checkDimensions(width, height);
+      typed = await encode((ctx) => {
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(bitmap, left, 0, contentWidth, height);
+      }, width, height, 'image/png');
+      options?.signal.throwIfAborted();
+    } else {
+      checkDimensions(width, height);
+    }
+  } finally {
+    bitmap.close();
+  }
+  if (typed.size <= MAX_IMAGE_BYTES) return { blob: typed, width, height, diagram };
+  // Copy image accepts PNG directly, so diagrams use the same bytes on every surface.
+  const result = await shrink(typed, mime, width, height, !!diagram);
+  options?.signal.throwIfAborted();
+  return { ...result, diagram, note: `“${label}” was ${mib(typed.size)} MiB and was downscaled to ${result.width} × ${result.height} (${mib(result.blob.size)} MiB) to fit X’s 5 MiB limit.` };
 }
