@@ -12,7 +12,7 @@
 <li><strong>Lossless preflight fixes:</strong> flags unsupported constructs with line numbers before opening Chrome, with optional <code>--flatten-lists</code> and <code>--endnotes</code> flags.</li></ul>
 <h2>Requirements</h2>
 <ul><li><code>node</code> 20 or newer and <code>playwright-cli</code>.</li>
-<li>Desktop Chrome with the Playwright Extension and the <a href="https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh">md2xarticle Chrome companion</a> (version 0.1.2 or later for covers and optional automatic draft creation).</li>
+<li>Desktop Chrome with the Playwright Extension and the <a href="https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh">md2xarticle Chrome companion</a> (version 0.1.2 or later for covers and draft status).</li>
 <li>A signed-in X account in that Chrome profile with access to X Articles.</li></ul>
 <h2>Install the skill</h2>
 <p>Clone the repository and copy or symlink <code>skills/md2xarticle</code> into your agent's skills folder (for example <code>~/.claude/skills/md2xarticle</code> or <code>~/.agents/skills/md2xarticle</code>):</p>
@@ -25,21 +25,22 @@ ln -s "$PWD/x-article-studio/skills/md2xarticle" ~/.agents/skills/md2xarticle</c
   --images /path/to/attachments \
   --cover /path/to/cover.png \
   --endnotes --flatten-lists</code></pre>
-<ol start="2"><li><strong>Stage and create the draft in your Chrome:</strong> attach to your signed-in Chrome profile and run the generated script.</li></ol>
+<ol start="2"><li><strong>Stage the draft in Chrome.</strong> Confirm X Articles is available in the intended account and that the companion's per-draft review is enabled. With the user's authorization to create the draft, attach to their signed-in Chrome profile and run the generated script.</li></ol>
 <pre role="region" aria-label="Run the draft creation script with playwright-cli" tabindex="0"><code>playwright-cli attach --extension=chrome --session=md2x-run
-playwright-cli -s=md2x-run run-code --filename=&lt;create-script-path&gt;
+playwright-cli -s=md2x-run run-code --filename=&lt;create-script-path&gt;</code></pre>
+<ol start="3"><li><strong>Review every draft.</strong> The companion opens its review page and stops at <code>awaiting-confirmation</code>. Ask the user to review the article and click <strong>Create X draft</strong> for this version. Then run the generated <code>wait</code> script.</li></ol>
+<pre role="region" aria-label="Wait for the confirmed draft and close the editor tab" tabindex="0"><code>playwright-cli -s=md2x-run run-code --filename=&lt;wait-script-path&gt;
 playwright-cli -s=md2x-run tab-close</code></pre>
-<ol start="3"><li><strong>First-run confirmation:</strong> on the first run, the companion opens its review page and stops at <code>awaiting-confirmation</code>. Click <strong>Create X draft</strong> there—and optionally tick <strong>Create drafts without this review</strong> once—so later agent runs complete without an extra click.</li></ol>
 <h2>Returned stages</h2>
 <div class="table-wrap" role="region" aria-labelledby="stages-caption" tabindex="0"><table><caption id="stages-caption">Draft creation outcomes reported by the skill</caption><thead><tr><th scope="col">Result</th><th scope="col">Meaning and next step</th></tr></thead><tbody>
-<tr><th scope="row"><code>ok: true</code></th><td>Draft created in X. Open the returned <code>draftUrl</code> to review and publish.</td></tr>
-<tr><th scope="row"><code>awaiting-confirmation</code></th><td>Companion review tab is open. Confirm <strong>Create X draft</strong> (and optionally enable skip-review), then run the generated <code>wait</code> script.</td></tr>
+<tr><th scope="row"><code>ok: true</code></th><td>Draft created in X. Open the returned <code>draftUrl</code> to verify the cover, images and content. Publish manually in X only with separate approval for the exact version.</td></tr>
+<tr><th scope="row"><code>awaiting-confirmation</code></th><td>Ask the user to confirm this draft by clicking <strong>Create X draft</strong> in the companion review tab. Then run the generated <code>wait</code> script.</td></tr>
 <tr><th scope="row"><code>issues</code></th><td>The website detected content that would lose data (such as an image that failed to load). Fix the listed line numbers and rerun step 1.</td></tr>
 <tr><th scope="row"><code>failed</code></th><td>No draft was created. For <code>X_FIREWALL_BLOCKED</code>, reword shell-pipe text such as <code>curl … | sh</code>; for sign-in errors, sign in to X and retry.</td></tr>
 <tr><th scope="row"><code>uncertain</code></th><td>X returned no clear confirmation. Do not blindly retry—check <code>x.com/compose/articles</code> first to avoid duplicate drafts.</td></tr>
 <tr><th scope="row"><code>companion-missing</code></th><td>Install or enable the Chrome companion in that profile and reload <code>md2xarticle.com</code>.</td></tr></tbody></table></div>
 <h2>Boundaries and safety</h2>
-<ul><li><strong>Human approval stays in control:</strong> the browser session only sees the tab it opened and cannot toggle the companion's review setting on its own.</li>
+<ul><li>Keep the companion's per-draft review enabled. The user confirms each draft in the companion.</li>
 <li><strong>No silent publishing or source edits:</strong> drafts remain unpublished in X, and original Markdown files on disk are never overwritten.</li>
 <li><strong>Same format limits as the web editor:</strong> up to 40 prepared images and 20 MiB total (images between 5 and 40 MiB are downscaled automatically); ALT text, GIF, and video are not set by this tool; X's firewall may block shell commands piped into a shell (<code>curl … | sh</code>), which <code>prepare.mjs</code> warns about ahead of time.</li></ul>
 <h2>Related guides</h2><ul><li><a href="/x-article-tables">Add a table to an X Article</a></li><li><a href="/mermaid-diagrams-x-articles">Add Mermaid diagrams to X Articles</a></li><li><a href="/markdown-images-x-articles">Markdown images in X Articles, including Obsidian notes</a></li><li><a href="/support">Full Markdown to X Articles guide</a></li><li><a href="https://github.com/geoqiao/x-article-studio/tree/main/skills/md2xarticle">Source code on GitHub</a></li></ul>

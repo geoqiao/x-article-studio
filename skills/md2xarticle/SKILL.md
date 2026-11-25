@@ -1,11 +1,11 @@
 ---
 name: md2xarticle
-description: Turn a finished Markdown article into an X (Twitter) Article draft in one step through md2xarticle.com and its Chrome companion — checks the Markdown locally, attaches its local images and cover, and creates the draft in the user's signed-in X account. Use when the user asks to publish, post, upload or draft a Markdown article to X Articles.
+description: Prepare finished Markdown, images and a cover in md2xarticle.com, then create and verify a human-reviewed X Article draft through its Chrome companion. Publishing is a separately authorized action in X.
 ---
 
 # Markdown → X Article draft
 
-The user writes the article; this skill does the rest and ends with a draft URL. It never publishes: publishing stays a manual step in X. It never edits the user's files: conversions go to a temporary copy.
+Prepare the user's approved article and return the verified draft URL. Conversions go to a temporary copy. Publish manually in X only with separate approval for the exact version.
 
 Requirements: `node` 20+, `playwright-cli`, Chrome with the Playwright Extension, the [Chrome companion](https://chromewebstore.google.com/detail/ojpjldmiiibgjnbjfiacaoenfgpdhbbh) installed, and an X account with Articles access signed in.
 
@@ -19,7 +19,7 @@ Requirements: `node` 20+, `playwright-cli`, Chrome with the Playwright Extension
 
    It prints JSON and runs the website's own content checks without opening a browser. Exit code 1 means `problems` is non-empty: fix each one (see below) and run it again. On success `create` and `wait` are script paths. Read `warnings` and `notes` too; mention anything that affects the result (no cover, downscaled images, wikilinks) in the final report.
 
-2. Open a tab in the user's Chrome and run the script:
+2. Confirm X Articles is available in the intended account and that the companion's per-draft review is enabled. With the user's authorization to create the draft, open a tab in their Chrome and run the script:
 
    ```bash
    playwright-cli attach --extension=chrome --session=md2x-<timestamp>
@@ -30,8 +30,8 @@ Requirements: `node` 20+, `playwright-cli`, Chrome with the Playwright Extension
 
    | Result | Meaning and next action |
    | --- | --- |
-   | `ok: true` | Draft created. Give the user `draftUrl`. Pass on `message` if it mentions the cover. |
-   | `stage: "awaiting-confirmation"` | The companion's review tab is open and waiting. Ask the user to click **Create X draft** there, and to tick **Create drafts without this review** so later runs need no click. Then run `<wait>` the same way. |
+   | `ok: true` | Draft created. Open `draftUrl` to verify the cover, images and content in X, then give the URL to the user. Pass on `message` if it mentions the cover. |
+   | `stage: "awaiting-confirmation"` | Ask the user to confirm this draft by clicking **Create X draft** in the companion review tab. Then run `<wait>` the same way. |
    | `stage: "issues"` | The website found content the converter would lose that step 1 did not catch (usually an image that failed to load). `issues` lists them with line numbers. Fix with the user's agreement and start again from step 1. |
    | `stage: "failed"` | Nothing was created; `message` says why. `errorCode: "X_FIREWALL_BLOCKED"` means X's firewall refused the text — in practice a command piped into a shell such as `curl … \| sh`; step 1 already warns about such lines. Reword that text with the user's agreement and start again. Sign-in problems: ask the user to sign in to X, then start again. |
    | `stage: "uncertain"` | X gave no clear answer. Do not retry. Ask the user to check x.com/compose/articles and resolve it in the companion review. |
@@ -58,7 +58,7 @@ Each problem names a line or a file. Prefer the lossless flags over editing text
 
 ## Boundaries
 
-- The session only sees the tab it opened. It cannot click the companion review or change its settings; that one-time tick is the user's.
+- Keep the companion's per-draft review enabled. The user confirms each draft in the companion.
 - `warnings` are not blockers (inline code styling, task lists, wikilinks, shell pipes, downscaled images). Report them; do not rewrite the article to silence them unless the user asks.
 - Do not retry a run that returned `uncertain`, and do not run `create` twice for one article without checking the first result: each run creates a separate draft.
 - `scripts/studio-core.mjs` is generated from the website's source by `pnpm build:skill`; do not edit it by hand.

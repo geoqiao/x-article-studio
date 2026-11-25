@@ -10,7 +10,7 @@ import type { ArticlePlan, AssetProgress, AssetSpec, Issue, LocalAssetMap, Prepa
 type CachedAsset = NormalizedImage & { input: File | string; sha256: string; base64: string };
 export type AssetCache = Map<string, CachedAsset>;
 
-export function safePreview(plan: ArticlePlan, assets: PreparedAsset[] = []): string {
+export function safePreview(plan: ArticlePlan, assets: PreparedAsset[] = [], { omitAssets = false } = {}): string {
   const urls = new Map(assets.map((a) => [a.spec.source, a.url]));
   const placements: string[] = [];
   let placement = 0;
@@ -20,7 +20,9 @@ export function safePreview(plan: ArticlePlan, assets: PreparedAsset[] = []): st
       const asset = plan.assets.find((item) => item.source === source);
       return `<figure class="xp-fig"${asset ? ` data-asset-id="${asset.id}"` : ''}>`;
     })
-    .replaceAll('图片加载中…', 'Image not ready. Choose a file below or check the image details.')
+    .replaceAll('图片加载中…', omitAssets
+      ? 'Image placeholder. Use the editor to prepare article assets.'
+      : 'Image not ready. Choose a file below or check the image details.')
     .replaceAll('（正文为空）', 'Your article preview will appear here.');
   // Sanitize third-party renderer output even when it currently escapes content.
   // Local-file previews have opaque origins and create blob:null/... URLs.

@@ -52,6 +52,7 @@ import { MobileTabs } from "./components/MobileTabs";
 import { SourcePanel } from "./components/SourcePanel";
 import { PreviewPanel } from "./components/PreviewPanel";
 import { StatusBar } from "./components/StatusBar";
+import { WebMcpPreview } from "./components/WebMcpPreview";
 import {
   StudioDialogs,
   type ManualCopy,
@@ -1316,6 +1317,7 @@ export default function App() {
           setRetry((value) => value + 1);
         }}
       />
+      {!STANDALONE && <WebMcpPreview />}
     </div>
   );
 }
