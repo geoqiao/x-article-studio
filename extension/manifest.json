@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "minimum_chrome_version": "116",
   "name": "Markdown to X Articles — md2xarticle",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Convert Markdown, Obsidian images, native tables, code blocks, and Mermaid diagrams into unpublished X Article drafts.",
   "homepage_url": "https://md2xarticle.com/",
   "icons": {
