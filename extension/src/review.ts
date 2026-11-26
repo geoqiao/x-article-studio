@@ -1,6 +1,7 @@
 import type { CompanionSettings, ExtensionRequest, ReviewJobView, ReviewResponse } from './protocol.js';
 import type { DraftBundle } from '../../src/types.js';
 import { getJob } from './storage.js';
+import { createTabInWindow } from './tabs.js';
 import { X_ARTICLES_URL } from './x-tab.js';
 
 type ReviewRequest = Exclude<ExtensionRequest, { type: 'article-studio-page-request' }>;
@@ -182,9 +183,7 @@ function renderView(view: ReviewJobView, bundle = previewBundle): void {
     appendButton(actions, 'Create X draft', () => void createDraft(), true);
   }
   if (view.status === 'uncertain') {
-    appendButton(actions, 'Open X Articles', () => {
-      void chrome.tabs.create({ url: X_ARTICLES_URL, active: true });
-    });
+    appendButton(actions, 'Open X Articles', () => void openXArticles());
     appendButton(actions, 'I checked X — allow another attempt', () => void armRetry(), true);
   }
   if (view.status === 'completed' && view.draftUrl) {
@@ -199,6 +198,17 @@ function renderView(view: ReviewJobView, bundle = previewBundle): void {
   }
   card.append(actions, settingsSection());
   root.append(card);
+}
+
+async function openXArticles(): Promise<void> {
+  const tab = await chrome.tabs.getCurrent().catch(() => undefined);
+  const windowId = tab?.windowId ?? (await getJob(jobId).catch(() => null))?.sourceWindowId;
+  try {
+    await createTabInWindow({ url: X_ARTICLES_URL, active: true }, windowId);
+  } catch (error) {
+    notice = error instanceof Error ? error.message : String(error);
+    await refresh();
+  }
 }
 
 async function refresh(): Promise<void> {

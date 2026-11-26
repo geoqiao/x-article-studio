@@ -45,6 +45,30 @@ describe('opening X Articles for a confirmed draft', () => {
     expect(api.tabs.update).not.toHaveBeenCalled();
   });
 
+  it('reuses a local Articles tab before an active tab in another window', async () => {
+    api.tabs.query.mockResolvedValue([{ ...ready, id: 9, windowId: 1, active: true }, ready]);
+
+    expect(await getOrOpenXArticlesTab(2)).toBe(7);
+    expect(api.tabs.create).not.toHaveBeenCalled();
+  });
+
+  it('opens in the originating window when Articles is already open elsewhere', async () => {
+    api.tabs.query.mockResolvedValue([{ ...ready, id: 9, windowId: 1, active: true }]);
+
+    expect(await getOrOpenXArticlesTab(2)).toBe(7);
+    expect(api.tabs.create).toHaveBeenCalledExactlyOnceWith({ url: X_ARTICLES_URL, active: false, windowId: 2 });
+  });
+
+  it('retries without a window ID if the originating window closed', async () => {
+    api.tabs.create.mockRejectedValueOnce(new Error('No window with id: 9'));
+
+    expect(await getOrOpenXArticlesTab(9)).toBe(7);
+    expect(api.tabs.create.mock.calls).toEqual([
+      [{ url: X_ARTICLES_URL, active: false, windowId: 9 }],
+      [{ url: X_ARTICLES_URL, active: false }],
+    ]);
+  });
+
   it('reuses a tab already navigating to Articles', async () => {
     api.tabs.query.mockResolvedValue([{ ...ready, url: 'about:blank', pendingUrl: X_ARTICLES_URL }]);
     expect(await getOrOpenXArticlesTab()).toBe(7);

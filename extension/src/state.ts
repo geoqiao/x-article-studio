@@ -9,6 +9,8 @@ export interface JobRecord {
   status: JobStatus;
   /** Kept only while the job may still need to run or be inspected after uncertainty. */
   bundle?: DraftBundle;
+  /** The staging tab's window, used when the current request has no tab. */
+  sourceWindowId?: number;
   fingerprint: string;
   imageCount: number;
   totalBytes: number;

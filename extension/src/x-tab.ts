@@ -1,4 +1,5 @@
 import { BridgeError } from '../../src/bridge.js';
+import { createTabInWindow } from './tabs.js';
 
 export const X_ARTICLES_URL = 'https://x.com/compose/articles';
 const LOAD_TIMEOUT_MS = 30_000;
@@ -24,13 +25,13 @@ export async function focusXTab(tabId: number): Promise<void> {
   }
 }
 
-/** Called only after the user confirms creation in the extension review. */
-export async function getOrOpenXArticlesTab(): Promise<number> {
+export async function getOrOpenXArticlesTab(windowId?: number): Promise<number> {
   const tabs = await chrome.tabs.query({});
-  const candidates = tabs.filter((tab) => tab.id !== undefined && isArticlesUrl(tab.pendingUrl ?? tab.url));
+  const candidates = tabs.filter((tab) => tab.id !== undefined &&
+    (windowId === undefined || tab.windowId === windowId) && isArticlesUrl(tab.pendingUrl ?? tab.url));
   const existing = candidates.find((tab) => tab.active) ?? candidates[0];
   // Keep the review visible while X loads and the draft is created.
-  const tab = existing ?? await chrome.tabs.create({ url: X_ARTICLES_URL, active: false });
+  const tab = existing ?? await createTabInWindow({ url: X_ARTICLES_URL, active: false }, windowId);
   if (tab.id === undefined) throw new BridgeError('X_TAB_UNAVAILABLE', 'X Articles could not be opened. Try again.');
   const tabId = tab.id;
 

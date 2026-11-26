@@ -33,6 +33,7 @@ import {
   type JobRecord,
 } from './state.js';
 import { claimJob, deleteJob, getJob, getSettings, putJob, putSettings, updateJob } from './storage.js';
+import { createTabInWindow } from './tabs.js';
 import { focusXTab, getOrOpenXArticlesTab } from './x-tab.js';
 
 declare const __ARTICLE_STUDIO_ORIGINS__: readonly string[];
@@ -148,7 +149,7 @@ function toReviewView(job: JobRecord): ReviewJobView {
   };
 }
 
-async function openReview(jobId: string): Promise<void> {
+async function openReview(jobId: string, windowId?: number): Promise<void> {
   const reviewUrl = `${chrome.runtime.getURL('review.html')}?jobId=${encodeURIComponent(jobId)}`;
   // Without the broad tabs permission, tabs.query hides even our own review URLs.
   // Extension contexts expose our pages without access to unrelated browsing data.
@@ -156,16 +157,21 @@ async function openReview(jobId: string): Promise<void> {
     contextTypes: [chrome.runtime.ContextType.TAB],
     documentUrls: [reviewUrl],
   });
-  const existing = contexts.find((context) => context.tabId >= 0);
+  const existing = contexts.find((context) => context.tabId >= 0 &&
+    (windowId === undefined || context.windowId === windowId));
   if (existing) {
-    await chrome.tabs.update(existing.tabId, { active: true });
-    if (existing.windowId >= 0) await chrome.windows.update(existing.windowId, { focused: true });
-    return;
+    try {
+      await chrome.tabs.update(existing.tabId, { active: true });
+      if (existing.windowId >= 0) await chrome.windows.update(existing.windowId, { focused: true });
+      return;
+    } catch {
+      // The review or its window may have closed since the context lookup.
+    }
   }
-  await chrome.tabs.create({ url: reviewUrl, active: true });
+  await createTabInWindow({ url: reviewUrl, active: true }, windowId);
 }
 
-async function stageBundle(bundle: DraftBundle): Promise<JobRecord> {
+async function stageBundle(bundle: DraftBundle, sourceWindowId?: number): Promise<JobRecord> {
   let job = await getJob(bundle.jobId);
   if (job) {
     if (job.fingerprint !== bundleFingerprint(bundle)) {
@@ -177,7 +183,7 @@ async function stageBundle(bundle: DraftBundle): Promise<JobRecord> {
     }
     return job;
   }
-  job = makeJobRecord(bundle);
+  job = { ...makeJobRecord(bundle), sourceWindowId };
   await putJob(job);
   return job;
 }
@@ -230,7 +236,7 @@ async function updateAttempt(jobId: string, attemptId: string, updater: (job: Jo
   return await updateJob(jobId, (job) => (job.attemptId === attemptId ? updater(job) : job));
 }
 
-async function runAttempt(job: JobRecord, attemptId: string): Promise<void> {
+async function runAttempt(job: JobRecord, attemptId: string, windowId?: number): Promise<void> {
   if (!job.bundle) {
     await updateAttempt(job.jobId, attemptId, (current) => failJob(current, 'The pending bundle is missing from extension storage.', false));
     return;
@@ -238,7 +244,7 @@ async function runAttempt(job: JobRecord, attemptId: string): Promise<void> {
 
   let invocationStarted = false;
   try {
-    const tabId = await getOrOpenXArticlesTab();
+    const tabId = await getOrOpenXArticlesTab(windowId ?? job.sourceWindowId);
     await injectRunner(tabId);
     await updateAttempt(job.jobId, attemptId, (current) => markUploading(current, 0));
     invocationStarted = true;
@@ -267,7 +273,7 @@ async function runAttempt(job: JobRecord, attemptId: string): Promise<void> {
   }
 }
 
-async function createJob(jobId: string): Promise<ReviewResponse> {
+async function createJob(jobId: string, windowId?: number): Promise<ReviewResponse> {
   const attemptId = `attempt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   const decision = await claimJob(jobId, attemptId);
   if (decision.kind === 'missing') return reviewError(new BridgeError('JOB_NOT_FOUND', 'This staged article is no longer available.'), 'JOB_NOT_FOUND');
@@ -282,7 +288,7 @@ async function createJob(jobId: string): Promise<ReviewResponse> {
 
   activeAttempts.set(jobId, attemptId);
   try {
-    await runAttempt(decision.job, attemptId);
+    await runAttempt(decision.job, attemptId, windowId);
   } finally {
     activeAttempts.delete(jobId);
   }
@@ -309,17 +315,17 @@ function toBridgeJob(job: ReviewJobView): BridgeJob {
  * the review click. Anything short of a created draft opens the review so the
  * user sees the reason and decides what happens next.
  */
-async function createWithoutReview(jobId: string): Promise<void> {
+async function createWithoutReview(jobId: string, windowId?: number): Promise<void> {
   let created = false;
   try {
-    const response = await createJob(jobId);
+    const response = await createJob(jobId, windowId);
     created = response.ok && response.job?.status === 'completed';
   } finally {
-    if (!created) await openReview(jobId).catch(() => undefined);
+    if (!created) await openReview(jobId, windowId).catch(() => undefined);
   }
 }
 
-async function handlePageRequest(request: BridgeRequestMessage): Promise<BridgeResponseMessage> {
+async function handlePageRequest(request: BridgeRequestMessage, sourceWindowId?: number): Promise<BridgeResponseMessage> {
   if (request.action === 'status') {
     const settings = await getSettings();
     return bridgeResponse(request, { available: true, version: extensionVersion, capabilities: [...COMPANION_CAPABILITIES], autoCreate: settings.autoCreate });
@@ -332,19 +338,20 @@ async function handlePageRequest(request: BridgeRequestMessage): Promise<BridgeR
   if (!request.bundle) throw new BridgeError('MISSING_BUNDLE', 'The stage request did not include a draft bundle.');
   const bundle = validateDraftBundle(request.bundle);
   await verifyDraftBundleHashes(bundle);
-  const job = await stageBundle(bundle);
+  const job = await stageBundle(bundle, sourceWindowId);
+  const windowId = sourceWindowId ?? job.sourceWindowId;
   const { autoCreate } = await getSettings();
   // A job that is running or already has its draft only needs its state read back.
   const startable = job.status === 'pending' || (job.status === 'failed' && job.retryable);
   if (autoCreate && (startable || job.status === 'creating' || job.status === 'uploading' || job.status === 'completed')) {
-    if (startable) void createWithoutReview(bundle.jobId);
+    if (startable) void createWithoutReview(bundle.jobId, windowId);
     return bridgeResponse(request, { reviewOpened: false, jobId: bundle.jobId, autoCreate: true });
   }
-  await openReview(bundle.jobId);
+  await openReview(bundle.jobId, windowId);
   return bridgeResponse(request, { reviewOpened: true, jobId: bundle.jobId });
 }
 
-async function handleReviewRequest(request: Exclude<ExtensionRequest, PageRequestEnvelope>): Promise<ReviewResponse> {
+async function handleReviewRequest(request: Exclude<ExtensionRequest, PageRequestEnvelope>, windowId?: number): Promise<ReviewResponse> {
   if (request.type === 'article-studio-settings-get') return { ok: true, settings: await getSettings() };
   if (request.type === 'article-studio-settings-set') {
     await putSettings({ autoCreate: request.autoCreate });
@@ -358,7 +365,7 @@ async function handleReviewRequest(request: Exclude<ExtensionRequest, PageReques
   const job = await getJob(request.jobId);
   if (!job) return reviewError(new BridgeError('JOB_NOT_FOUND', 'This staged article is no longer available.'), 'JOB_NOT_FOUND');
 
-  if (request.type === 'article-studio-review-create') return await createJob(request.jobId);
+  if (request.type === 'article-studio-review-create') return await createJob(request.jobId, windowId);
 
   if (request.type === 'article-studio-review-arm-retry') {
     if (activeAttempts.has(request.jobId)) return reviewError(new BridgeError('JOB_BUSY', 'The current attempt is still running.'), 'JOB_BUSY');
@@ -375,15 +382,15 @@ async function handleReviewRequest(request: Exclude<ExtensionRequest, PageReques
   return { ok: true };
 }
 
-chrome.action.onClicked.addListener(() => {
+chrome.action.onClicked.addListener((tab) => {
   const origin = appOrigins.find((candidate) => candidate.startsWith('https://')) ?? appOrigins[0];
-  void chrome.tabs.create({ url: `${origin}/` });
+  void createTabInWindow({ url: `${origin}/` }, tab?.windowId);
 });
 
 chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
   if (isPageRequestEnvelope(message)) {
     if (!isAppSender(sender)) return false;
-    void handlePageRequest(message.request)
+    void handlePageRequest(message.request, sender.tab?.windowId)
       .then(sendResponse)
       .catch((error) => sendResponse(bridgeErrorResponse(message.request, error)));
     return true;
@@ -391,7 +398,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
 
   if (isReviewRequest(message)) {
     if (!isOwnExtensionSender(sender)) return false;
-    void handleReviewRequest(message)
+    void handleReviewRequest(message, sender.tab?.windowId)
       .then(sendResponse)
       .catch((error) => sendResponse(reviewError(error)))
       .catch(() => undefined);
